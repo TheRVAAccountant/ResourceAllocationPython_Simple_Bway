@@ -24,6 +24,8 @@ from src.gui.log_viewer_tab import LogViewerTab
 from src.core.allocation_engine import AllocationEngine
 from src.services.excel_service import ExcelService
 from src.services.border_formatting_service import BorderFormattingService
+from src.services.dashboard_data_service import DashboardDataService
+from src.services.data_management_service import DataManagementService
 
 
 # Set appearance mode and color theme
@@ -53,6 +55,8 @@ class ResourceAllocationGUI(ctk.CTk):
         self.allocation_engine = None
         self.excel_service = None
         self.border_service = None
+        self.dashboard_data_service = None
+        self.data_management_service = None
         self.current_allocation_result = None
         
         # Initialize services
@@ -121,9 +125,14 @@ class ResourceAllocationGUI(ctk.CTk):
             
             self.excel_service = ExcelService(config)
             self.excel_service.initialize()
-            
+
             self.border_service = BorderFormattingService(config)
             self.border_service.initialize()
+
+            # Read-only dashboard data provider
+            self.dashboard_data_service = DashboardDataService()
+            # Read-only data management data provider
+            self.data_management_service = DataManagementService()
             
         except Exception as e:
             logger.error(f"Failed to initialize services: {e}")
@@ -151,10 +160,15 @@ class ResourceAllocationGUI(ctk.CTk):
         logo_frame.grid(row=0, column=0, padx=10, pady=10)
         logo_frame.grid_propagate(False)
         
-        # Load header icon image from assets; fallback to emoji on error
+        # Load header icon image from high‑resolution assets where possible; fallback to emoji
         try:
-            icon_path = self._resolve_icon_path()
-            pil_img = Image.open(icon_path).convert("RGBA")
+            header_path = self._resolve_header_image_path()
+            pil_img = Image.open(header_path).convert("RGBA")
+            # Resize with high quality for crisp display
+            try:
+                pil_img = pil_img.resize((64, 64), Image.LANCZOS)
+            except Exception:
+                pil_img = pil_img.resize((64, 64))
             # Use a consistent displayed size for the header logo
             self._header_ctk_image = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(48, 48))
             logo_label = ctk.CTkLabel(logo_frame, text="", image=self._header_ctk_image)
@@ -163,7 +177,7 @@ class ResourceAllocationGUI(ctk.CTk):
             logger.warning(f"Falling back to emoji header icon: {e}")
             logo_label = ctk.CTkLabel(
                 logo_frame,
-                text="📊",
+                text="📦",
                 font=ctk.CTkFont(size=40)
             )
             logo_label.place(relx=0.5, rely=0.5, anchor="center")
@@ -200,7 +214,7 @@ class ResourceAllocationGUI(ctk.CTk):
         self.appearance_mode_button.grid(row=0, column=2, padx=20, pady=20)
 
     def _resolve_icon_path(self) -> Path:
-        """Resolve absolute path to the application icon (.ico).
+        """Resolve absolute path to the base window icon (.ico for cross‑platform Tk).
 
         Supports both running from source and PyInstaller bundles.
         """
@@ -217,6 +231,40 @@ class ResourceAllocationGUI(ctk.CTk):
             raise FileNotFoundError(f"Icon not found at {ico}")
         return ico
 
+    def _resolve_header_image_path(self) -> Path:
+        """Resolve the best available image file for the header logo.
+
+        Preference order (highest first): app.icns (macOS, will read as image),
+        app_1024.png, amazon_package.png, amazon_dsp.png, then fallback to
+        converting the .ico returned by _resolve_icon_path().
+        """
+        # Base directory handling for source and bundled runs
+        if hasattr(sys, "_MEIPASS"):
+            base = Path(getattr(sys, "_MEIPASS"))
+            icons = base / "assets" / "icons"
+        else:
+            icons = Path(__file__).resolve().parent.parent.parent / "assets" / "icons"
+
+        candidates = [
+            icons / "app.icns",
+            icons / "app_1024.png",
+            icons / "amazon_package.png",
+            icons / "amazon_dsp.png",
+        ]
+        for p in candidates:
+            if p.exists():
+                return p
+
+        # Fallback: convert ICO to a temporary PNG so Pillow can load cleanly
+        try:
+            import tempfile
+            ico = self._resolve_icon_path()
+            tmp_png = Path(tempfile.gettempdir()) / "resource_allocation_header.png"
+            Image.open(ico).save(tmp_png, format="PNG")
+            return tmp_png
+        except Exception as e:
+            raise FileNotFoundError(f"No suitable header image found: {e}")
+
     def _set_app_icons(self):
         """Set window title bar icon and taskbar/dock icon where supported.
 
@@ -229,7 +277,15 @@ class ResourceAllocationGUI(ctk.CTk):
 
             # Prepare Tk PhotoImages at common sizes
             sizes = [16, 32, 64, 128]
-            pil = Image.open(ico_path).convert("RGBA")
+            # Prefer a high-resolution PNG for crisp scaling if available; fallback to .ico
+            project_root = Path(__file__).resolve().parent.parent.parent
+            png_candidates = [
+                project_root / "assets" / "icons" / "app_1024.png",
+                project_root / "assets" / "icons" / "amazon_package.png",
+                project_root / "assets" / "icons" / "amazon_dsp.png",
+            ]
+            src_for_photo = next((p for p in png_candidates if p.exists()), ico_path)
+            pil = Image.open(src_for_photo).convert("RGBA")
             self._icon_images = []  # keep references
             for sz in sizes:
                 resized = pil.copy()
@@ -263,18 +319,41 @@ class ResourceAllocationGUI(ctk.CTk):
                     logger.debug(f"Setting AppUserModelID failed: {e}")
 
             elif platform_name == "darwin":
-                # Best-effort: set dock icon via AppKit if available
+                # Prefer a high‑resolution icon for a crisp Dock image. Use AppKit if available.
                 try:
                     from AppKit import NSApplication, NSImage
-                    import tempfile
-                    tmp_png = Path(tempfile.gettempdir()) / "resource_allocation_icon.png"
-                    pil_png = pil.copy()
-                    pil_png.save(tmp_png, format="PNG")
-                    app = NSApplication.sharedApplication()
-                    nsimg = NSImage.alloc().initWithContentsOfFile_(str(tmp_png))
-                    if nsimg:
-                        app.setApplicationIconImage_(nsimg)
+                    project_root = Path(__file__).resolve().parent.parent.parent
+                    icons = project_root / "assets" / "icons"
+
+                    # Build a list of candidates, highest quality first
+                    candidates: list[Path] = [
+                        icons / "app.icns",
+                        icons / "app_1024.png",
+                        icons / "amazon_package.png",
+                        icons / "amazon_dsp.png",
+                    ]
+
+                    icon_for_dock: Path | None = next((p for p in candidates if p.exists()), None)
+
+                    # Fallback: convert the existing .ico into a temp PNG if needed
+                    if icon_for_dock is None:
+                        try:
+                            import tempfile
+                            tmp_png = Path(tempfile.gettempdir()) / "resource_allocation_icon.png"
+                            pil.copy().save(tmp_png, format="PNG")
+                            icon_for_dock = tmp_png
+                            logger.debug(f"macOS dock fallback using temp PNG: {icon_for_dock}")
+                        except Exception as conv_e:
+                            logger.debug(f"ICO→PNG fallback failed: {conv_e}")
+
+                    if icon_for_dock is not None:
+                        app = NSApplication.sharedApplication()
+                        nsimg = NSImage.alloc().initWithContentsOfFile_(str(icon_for_dock))
+                        if nsimg:
+                            app.setApplicationIconImage_(nsimg)
+                            logger.info(f"macOS Dock icon set from: {icon_for_dock}")
                 except Exception as e:
+                    # If AppKit (pyobjc) is not installed or something else fails, skip silently
                     logger.debug(f"macOS dock icon enhancement skipped: {e}")
             else:
                 # Linux usually picks up from iconphoto; nothing extra required
@@ -305,7 +384,8 @@ class ResourceAllocationGUI(ctk.CTk):
         # Initialize tab contents
         self.dashboard_tab = DashboardTab(
             self.tabview.tab("🏠 Dashboard"),
-            self.allocation_engine
+            self.allocation_engine,
+            dashboard_data_service=self.dashboard_data_service
         )
         
         self.allocation_tab = AllocationTab(
@@ -314,10 +394,22 @@ class ResourceAllocationGUI(ctk.CTk):
             self.excel_service,
             self.border_service
         )
+
+        # Allow dashboard to read the currently selected Daily Summary path
+        try:
+            self.dashboard_tab.set_daily_summary_path_getter(
+                lambda: self.allocation_tab.daily_summary_path.get()
+            )
+            self.dashboard_tab.set_daily_routes_path_getter(
+                lambda: self.allocation_tab.daily_routes_path.get()
+            )
+        except Exception as e:
+            logger.debug(f"Unable to wire Daily Summary getter to dashboard: {e}")
         
         self.data_management_tab = DataManagementTab(
             self.tabview.tab("📊 Data Management"),
-            self.excel_service
+            self.excel_service,
+            data_service=self.data_management_service
         )
         
         self.log_viewer_tab = LogViewerTab(
@@ -329,6 +421,33 @@ class ResourceAllocationGUI(ctk.CTk):
             self.allocation_engine,
             self.excel_service
         )
+
+        # Allow Data Management tab to read the Daily Summary path
+        try:
+            self.data_management_tab.set_daily_summary_path_getter(
+                lambda: self.allocation_tab.daily_summary_path.get()
+            )
+            # Provide allocated vehicles from most recent result (Allocation tab preferred)
+            def _allocated_vehicles_getter():
+                try:
+                    # Prefer current AllocationTab result (GAS-compatible flow)
+                    if getattr(self.allocation_tab, "current_result", None):
+                        allocs = self.allocation_tab.current_result.allocations or {}
+                        return {vid for vids in allocs.values() for vid in vids}
+                except Exception:
+                    pass
+                try:
+                    # Fallback to AllocationEngine history if any
+                    hist = self.allocation_engine.get_history()
+                    if hist:
+                        allocs = hist[-1].allocations or {}
+                        return {vid for vids in allocs.values() for vid in vids}
+                except Exception:
+                    pass
+                return set()
+            self.data_management_tab.set_allocated_vehicles_getter(_allocated_vehicles_getter)
+        except Exception as e:
+            logger.debug(f"Unable to wire Daily Summary getter to data tab: {e}")
         
         # Set default tab
         self.tabview.set("🏠 Dashboard")

@@ -64,21 +64,24 @@ else
 fi
 
 # Optional: Install macOS AppKit for dock icon enhancement if on macOS
+# Set RA_SKIP_PYOBJC=1 to skip auto-install.
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  if python - <<'PY'
-import importlib.util
-import sys
-spec = importlib.util.find_spec('AppKit')
-sys.exit(0 if spec else 1)
-PY
-  then
-    log "AppKit already available (pyobjc)."
+  if [[ "${RA_SKIP_PYOBJC:-0}" == "1" ]]; then
+    log "Skipping pyobjc check/installation (RA_SKIP_PYOBJC=1)."
   else
-    log "AppKit not found. You can install it with: pip install pyobjc (optional)"
+    if python - <<'PY'
+import importlib.util, sys
+sys.exit(0 if importlib.util.find_spec('AppKit') else 1)
+PY
+    then
+      log "AppKit already available (pyobjc)."
+    else
+      log "Installing pyobjc for macOS Dock icon support (once)."
+      pip install -q pyobjc || log "warning: failed to install pyobjc; Dock icon may remain default"
+    fi
   fi
 fi
 
 # Launch the GUI
 log "Launching GUI application"
 exec python gui_app.py
-
