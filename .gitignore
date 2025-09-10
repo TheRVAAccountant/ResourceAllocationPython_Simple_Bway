@@ -1,0 +1,55 @@
+### Local environment
+.envrc
+.direnv/
+.env
+.env.*
+
+### OS noise
+.DS_Store
+Thumbs.db
+
+### Python bytecode/caches
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+### Virtual environments
+.venv/
+venv/
+
+### Build artifacts
+build/
+dist/
+*.egg-info/
+
+### IDE/editor settings
+.idea/
+.vscode/
+*.code-workspace
+
+### Logs and runtime files
+logs/
+src/logs/
+*.log
+
+### App outputs and local inputs (large Excel files)
+outputs/**
+inputs/**
+
+# Keep placeholders if needed (uncomment if you add README)
+# !outputs/README.md
+# !inputs/README.md
+
+### Local config/state
+config/*.json
+
+### Large workbook data at repo root (avoid committing secrets/data)
+*Daily Summary Log*.xlsx
+*Routes_*.xlsx
+*DayOfOps*.xlsx
