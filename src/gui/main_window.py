@@ -4,6 +4,7 @@ import sys
 import os
 from pathlib import Path
 from typing import Optional
+import json
 import threading
 from datetime import datetime
 import customtkinter as ctk
@@ -41,7 +42,9 @@ class ResourceAllocationGUI(ctk.CTk):
         super().__init__()
         
         # Window configuration
-        self.title("Resource Allocation System")
+        # Load company name from settings before setting titles
+        self.company_name = self._read_company_name_from_settings()
+        self.title(self._compose_app_title(self.company_name))
         self.geometry("1400x1000")
         self.minsize(1200, 900)
         
@@ -186,12 +189,12 @@ class ResourceAllocationGUI(ctk.CTk):
         title_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
         title_frame.grid(row=0, column=1, sticky="w", padx=20, pady=10)
         
-        title_label = ctk.CTkLabel(
+        self.title_label = ctk.CTkLabel(
             title_frame,
-            text="Resource Allocation System",
+            text=self._compose_app_title(self.company_name),
             font=ctk.CTkFont(size=28, weight="bold")
         )
-        title_label.grid(row=0, column=0, sticky="w")
+        self.title_label.grid(row=0, column=0, sticky="w")
         
         subtitle_label = ctk.CTkLabel(
             title_frame,
@@ -419,7 +422,8 @@ class ResourceAllocationGUI(ctk.CTk):
         self.settings_tab = SettingsTab(
             self.tabview.tab("⚙️ Settings"),
             self.allocation_engine,
-            self.excel_service
+            self.excel_service,
+            on_settings_saved=self._on_settings_saved
         )
 
         # Allow Data Management tab to read the Daily Summary path
@@ -502,6 +506,48 @@ class ResourceAllocationGUI(ctk.CTk):
         else:
             ctk.set_appearance_mode("Dark")
             self.appearance_mode_button.configure(text="🌙")
+
+    # --- Title helpers and settings integration ---
+    def _compose_app_title(self, company_name: Optional[str]) -> str:
+        base = "Resource Management System"
+        name = (company_name or "").strip()
+        return f"{name} - {base}" if name else base
+
+    def _read_company_name_from_settings(self) -> str:
+        try:
+            settings_path = Path("config/settings.json")
+            if settings_path.exists():
+                with open(settings_path) as f:
+                    data = json.load(f)
+                return str(data.get("company_name", "") or "")
+        except Exception as e:
+            logger.debug(f"Unable to read company_name from settings: {e}")
+        return ""
+
+    def _apply_company_name(self, company_name: str):
+        try:
+            title = self._compose_app_title(company_name)
+            # Window title
+            self.title(title)
+            # Header label
+            if getattr(self, "title_label", None):
+                self.title_label.configure(text=title)
+        except Exception as e:
+            logger.debug(f"Failed to apply company name to title: {e}")
+
+    def _on_settings_saved(self, settings: dict):
+        try:
+            self.company_name = str(settings.get("company_name", "") or "")
+            logger.info(f"Applying settings from save: company_name='{self.company_name}', auto_open_results={settings.get('auto_open_results', False)}")
+            self._apply_company_name(self.company_name)
+            # Reflect auto-open preference in Allocation tab if present
+            try:
+                if hasattr(self, "allocation_tab") and self.allocation_tab:
+                    self.allocation_tab.set_auto_open_results(bool(settings.get("auto_open_results", False)))
+            except Exception as e:
+                logger.debug(f"Failed to propagate auto_open_results to allocation tab: {e}")
+        except Exception as e:
+            logger.debug(f"_on_settings_saved handler error: {e}")
     
     def update_status(self):
         """Update status bar information."""
