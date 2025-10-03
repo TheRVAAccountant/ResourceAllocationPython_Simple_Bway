@@ -1,0 +1,51 @@
+pdfplumber>=0.11.7
+# Core Excel manipulation
+openpyxl>=3.1.2
+xlwings>=0.31.0
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Data validation and models
+pydantic>=2.5.0
+python-dateutil>=2.8.2
+
+# Email integration
+yagmail>=0.15.293
+email-validator>=2.1.0
+
+# Scheduling and automation
+schedule>=1.2.0
+APScheduler>=3.10.4
+
+# Configuration management
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+
+# Logging and monitoring
+loguru>=0.7.2
+rich>=13.7.0
+
+# Caching
+cachetools>=5.3.2
+diskcache>=5.6.3
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.12.0
+pytest-asyncio>=0.21.1
+
+# Development tools
+black>=23.12.0
+ruff>=0.1.0
+mypy>=1.8.0
+isort>=5.13.0
+pre-commit>=3.6.0
+
+# GUI (optional, for control panel)
+customtkinter>=5.2.0
+ttkbootstrap>=1.10.1
+
+# Type stubs
+types-python-dateutil>=2.8.19
+pandas-stubs>=2.1.4

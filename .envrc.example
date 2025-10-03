@@ -1,0 +1,16 @@
+# Direnv configuration for GitHub MCP (local-only)
+#
+# Usage:
+# 1) Copy this file to ".envrc" in the project root.
+# 2) Replace the placeholder with your GitHub Personal Access Token (PAT).
+# 3) From this directory, run: `direnv allow`
+# 4) Start Codex CLI and run MCP GitHub commands.
+#
+# Security:
+# - Do NOT commit ".envrc". It is gitignored by default.
+# - Use minimal scopes: repo, workflow, read:org.
+
+export GITHUB_TOKEN="REPLACE_WITH_YOUR_PAT"
+# Optional: keep both env var names in sync if needed
+export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
+
