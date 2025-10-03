@@ -58,12 +58,12 @@ class ValidationResult:
         """Get validation summary message."""
         if self.duplicate_count == 0:
             return "✅ No duplicate vehicle assignments detected"
-        elif self.is_valid:
-            # Duplicates found but in non-strict mode (warnings only)
-            return f"⚠️ Found {self.duplicate_count} vehicles assigned to multiple routes (warnings only)"
         else:
-            # Duplicates found in strict mode (errors)
-            return f"❌ Found {self.duplicate_count} vehicles assigned to multiple routes (validation failed)"
+            # Duplicates found - check conflict level for appropriate icon
+            has_errors = any(dup.conflict_level == "error" for dup in self.duplicates.values())
+            icon = "❌" if has_errors else "⚠️"
+            status = "validation failed" if has_errors else "warnings only"
+            return f"{icon} Found {self.duplicate_count} vehicles assigned to multiple routes ({status})"
 
 
 class DuplicateVehicleValidator(BaseService):
@@ -185,7 +185,7 @@ class DuplicateVehicleValidator(BaseService):
 
         # Create validation result
         result = ValidationResult(
-            is_valid=len(duplicates) == 0 or not self.strict_mode,
+            is_valid=len(duplicates) == 0,  # Invalid if any duplicates found
             duplicate_count=len(duplicates),
             duplicates=duplicates,
             warnings=warnings,

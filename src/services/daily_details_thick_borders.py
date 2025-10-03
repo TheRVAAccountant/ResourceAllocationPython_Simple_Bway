@@ -73,17 +73,21 @@ class DailyDetailsThickBorderService:
 
         # Find the last row with data
         max_row = worksheet.max_row
+        last_data_row = start_row - 1  # Track the actual last row with data
 
         for row_num in range(start_row, max_row + 1):
             # Get date from first column
             date_cell = worksheet.cell(row=row_num, column=1)
 
             if date_cell.value is None:
-                # Empty row, might be end of data
+                # Empty row, end of data
                 if current_date and first_row_for_date:
-                    # Save the previous section
-                    date_sections[current_date] = (first_row_for_date, row_num - 1)
+                    # Save the previous section with the last row that had data
+                    date_sections[current_date] = (first_row_for_date, last_data_row)
                 break
+
+            # Track the last row with data
+            last_data_row = row_num
 
             # Parse the date value
             row_date = self._parse_date_value(date_cell.value)
@@ -97,10 +101,10 @@ class DailyDetailsThickBorderService:
                 # Start new section
                 current_date = row_date
                 first_row_for_date = row_num
-
-        # Don't forget the last section
-        if current_date and first_row_for_date:
-            date_sections[current_date] = (first_row_for_date, max_row)
+        else:
+            # Loop completed without breaking - save last section with last_data_row
+            if current_date and first_row_for_date:
+                date_sections[current_date] = (first_row_for_date, last_data_row)
 
         return date_sections
 
