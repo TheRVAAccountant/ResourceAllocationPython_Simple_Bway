@@ -1,6 +1,5 @@
 """Custom duplicate validation dialog widget using CustomTkinter."""
 
-from typing import Optional
 
 import customtkinter as ctk
 from loguru import logger
@@ -21,7 +20,7 @@ class DuplicateValidationDialog:
         """
         self.parent = parent
         self.validation_result = validation_result
-        self.result: Optional[bool] = None
+        self.result: bool | None = None
 
         # Create dialog window
         self.window = ctk.CTkToplevel(parent)
@@ -40,8 +39,8 @@ class DuplicateValidationDialog:
         self._setup_content()
 
         # Bind keyboard events
-        self.window.bind("<Return>", lambda e: self._on_proceed())
-        self.window.bind("<Escape>", lambda e: self._on_cancel())
+        self.window.bind("<Return>", lambda _event: self._on_proceed())
+        self.window.bind("<Escape>", lambda _event: self._on_cancel())
 
         # Focus the dialog
         self.window.focus_set()

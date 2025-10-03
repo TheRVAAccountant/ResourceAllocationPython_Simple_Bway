@@ -1,7 +1,6 @@
 """Excel-related data models."""
 
 from enum import Enum
-from typing import Any, Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -50,9 +49,9 @@ class VerticalAlignment(str, Enum):
 class ExcelColor(BaseModel):
     """Represents an Excel color."""
 
-    rgb: Optional[str] = None  # Hex color like "FF0000"
-    theme: Optional[int] = None  # Theme color index
-    tint: Optional[float] = None  # Tint value (-1 to 1)
+    rgb: str | None = None  # Hex color like "FF0000"
+    theme: int | None = None  # Theme color index
+    tint: float | None = None  # Tint value (-1 to 1)
 
     @validator("rgb")
     def validate_rgb(cls, v):
@@ -78,28 +77,28 @@ class ExcelFont(BaseModel):
     italic: bool = False
     underline: bool = False
     strike: bool = False
-    color: Optional[ExcelColor] = None
+    color: ExcelColor | None = None
 
 
 class ExcelBorder(BaseModel):
     """Represents Excel border settings."""
 
-    left: Optional[BorderStyle] = None
-    right: Optional[BorderStyle] = None
-    top: Optional[BorderStyle] = None
-    bottom: Optional[BorderStyle] = None
-    diagonal: Optional[BorderStyle] = None
+    left: BorderStyle | None = None
+    right: BorderStyle | None = None
+    top: BorderStyle | None = None
+    bottom: BorderStyle | None = None
+    diagonal: BorderStyle | None = None
     diagonal_up: bool = False
     diagonal_down: bool = False
-    color: Optional[ExcelColor] = None
+    color: ExcelColor | None = None
 
 
 class ExcelFill(BaseModel):
     """Represents Excel fill settings."""
 
     pattern_type: str = "solid"
-    fg_color: Optional[ExcelColor] = None
-    bg_color: Optional[ExcelColor] = None
+    fg_color: ExcelColor | None = None
+    bg_color: ExcelColor | None = None
 
 
 class ExcelAlignment(BaseModel):
@@ -123,10 +122,10 @@ class ExcelAlignment(BaseModel):
 class ExcelStyle(BaseModel):
     """Represents complete Excel cell style."""
 
-    font: Optional[ExcelFont] = None
-    border: Optional[ExcelBorder] = None
-    fill: Optional[ExcelFill] = None
-    alignment: Optional[ExcelAlignment] = None
+    font: ExcelFont | None = None
+    border: ExcelBorder | None = None
+    fill: ExcelFill | None = None
+    alignment: ExcelAlignment | None = None
     number_format: str = "General"
     protection_locked: bool = True
     protection_hidden: bool = False
@@ -231,12 +230,12 @@ class ExcelWorksheet(BaseModel):
     """Represents an Excel worksheet."""
 
     name: str
-    tab_color: Optional[ExcelColor] = None
+    tab_color: ExcelColor | None = None
     hidden: bool = False
     zoom: int = 100
-    freeze_panes: Optional[tuple[int, int]] = None  # (row, col)
-    auto_filter: Optional[ExcelRange] = None
-    print_area: Optional[ExcelRange] = None
+    freeze_panes: tuple[int, int] | None = None  # (row, col)
+    auto_filter: ExcelRange | None = None
+    print_area: ExcelRange | None = None
     row_heights: dict[int, float] = Field(default_factory=dict)
     column_widths: dict[int, float] = Field(default_factory=dict)
 
@@ -263,7 +262,7 @@ class ExcelFormula(BaseModel):
 
     formula: str
     is_array: bool = False
-    range: Optional[ExcelRange] = None
+    range: ExcelRange | None = None
 
     @validator("formula")
     def validate_formula(cls, v):
@@ -278,14 +277,14 @@ class ExcelValidation(BaseModel):
 
     type: str  # "list", "whole", "decimal", "date", "time", "textLength", "custom"
     operator: str = "between"  # "between", "notBetween", "equal", "notEqual", "greaterThan", etc.
-    formula1: Optional[str] = None
-    formula2: Optional[str] = None
-    list_values: Optional[list[str]] = None
+    formula1: str | None = None
+    formula2: str | None = None
+    list_values: list[str] | None = None
     show_dropdown: bool = True
     show_input_message: bool = False
-    input_title: Optional[str] = None
-    input_message: Optional[str] = None
+    input_title: str | None = None
+    input_message: str | None = None
     show_error_message: bool = True
     error_style: str = "stop"  # "stop", "warning", "information"
-    error_title: Optional[str] = None
-    error_message: Optional[str] = None
+    error_title: str | None = None
+    error_message: str | None = None

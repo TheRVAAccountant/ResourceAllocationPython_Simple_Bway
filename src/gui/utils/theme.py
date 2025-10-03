@@ -8,12 +8,10 @@ Only UI colors are defined here; there is no business logic.
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Union
-
-Color = Union[str, Tuple[str, str]]
+Color = str | tuple[str, str]
 
 # Semantic accent colors for dashboard metrics
-ACCENTS: Dict[str, Tuple[str, str]] = {
+ACCENTS: dict[str, tuple[str, str]] = {
     # Metrics
     "total_vehicles": ("#1E3A8A", "#93C5FD"),  # deep blue / soft light blue
     "total_drivers": ("#166534", "#86EFAC"),  # dark green / mint green
@@ -26,17 +24,17 @@ ACCENTS: Dict[str, Tuple[str, str]] = {
 }
 
 # Status indicator colors
-STATUS: Dict[str, Tuple[str, str]] = {
+STATUS: dict[str, tuple[str, str]] = {
     "active": ("#166534", "#22C55E"),  # dark green / emerald
     "disabled": ("#92400E", "#F59E0B"),  # brown-orange / amber
     "inactive": ("#991B1B", "#EF4444"),  # dark red / red
     "error": ("#991B1B", "#EF4444"),  # alias
 }
 
-DEFAULT_ACCENT: Tuple[str, str] = ("#2563EB", "#93C5FD")  # blue / light blue
+DEFAULT_ACCENT: tuple[str, str] = ("#2563EB", "#93C5FD")  # blue / light blue
 
 
-def get_accent(name: str) -> Tuple[str, str]:
+def get_accent(name: str) -> tuple[str, str]:
     """Return a semantic accent color tuple.
 
     Falls back to DEFAULT_ACCENT if the key is unknown.
@@ -44,7 +42,7 @@ def get_accent(name: str) -> Tuple[str, str]:
     return ACCENTS.get(name, DEFAULT_ACCENT)
 
 
-def get_status_color(name: str) -> Tuple[str, str]:
+def get_status_color(name: str) -> tuple[str, str]:
     """Return a status color tuple. Name is case-insensitive."""
     return STATUS.get(name.lower(), STATUS["inactive"])  # sensible default
 

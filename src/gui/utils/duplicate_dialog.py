@@ -1,8 +1,6 @@
 """Duplicate validation dialog utilities for GUI integration."""
 
-import tkinter as tk
 from tkinter import messagebox
-from typing import Optional
 
 from loguru import logger
 
@@ -57,8 +55,8 @@ def show_duplicate_details(validation_result: ValidationResult) -> None:
             return
 
         # Build detailed message
-        message = f"Duplicate Vehicle Assignment Details\n"
-        message += f"=" * 40 + "\n\n"
+        message = "Duplicate Vehicle Assignment Details\n"
+        message += "=" * 40 + "\n\n"
 
         for vehicle_id, duplicate in validation_result.duplicates.items():
             message += f"Vehicle: {vehicle_id}\n"
@@ -86,7 +84,7 @@ def show_duplicate_details(validation_result: ValidationResult) -> None:
         logger.error(f"Error showing duplicate details dialog: {e}")
 
 
-def show_no_duplicates(validation_result: ValidationResult) -> None:
+def show_no_duplicates(_validation_result: ValidationResult) -> None:
     """
     Show success dialog when no duplicates are found.
 

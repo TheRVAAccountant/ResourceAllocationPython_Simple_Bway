@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from loguru import logger
 
@@ -31,7 +31,7 @@ class AllocationHistoryService(BaseService):
     DEFAULT_RETENTION_DAYS = 90
     HISTORY_FILE = Path("config/allocation_history.json")
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize allocation history service.
 
         Args:
@@ -93,9 +93,9 @@ class AllocationHistoryService(BaseService):
         self,
         result: AllocationResult,
         engine_name: str,
-        files: Optional[Dict[str, str]] = None,
+        files: dict[str, str] | None = None,
         duplicate_conflicts: int = 0,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """Save allocation result to persistent history.
 
@@ -253,8 +253,8 @@ class AllocationHistoryService(BaseService):
             # Don't raise - history saving should not block allocations
 
     def get_history(
-        self, limit: int = 10, filters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 10, filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Retrieve allocation history with optional filtering.
 
         Args:
@@ -316,12 +316,12 @@ class AllocationHistoryService(BaseService):
             logger.error(f"Failed to read allocation history: {e}")
             return []
 
-    def get_latest_summary(self) -> Optional[Dict[str, Any]]:
+    def get_latest_summary(self) -> dict[str, Any] | None:
         """Return the most recent history entry (formatted)."""
         history = self.get_history(limit=1)
         return history[0] if history else None
 
-    def get_statistics(self, days: int = 7) -> Dict[str, Any]:
+    def get_statistics(self, days: int = 7) -> dict[str, Any]:
         """Get allocation statistics for recent history.
 
         Args:
@@ -423,7 +423,7 @@ class AllocationHistoryService(BaseService):
         count, _ = self._parse_duplicate_conflicts(value)
         return count
 
-    def _parse_duplicate_conflicts(self, value: Any) -> Tuple[int, List[Any]]:
+    def _parse_duplicate_conflicts(self, value: Any) -> tuple[int, list[Any]]:
         """Normalize duplicate conflict representations to count + details."""
         if value is None:
             return 0, []
@@ -431,15 +431,15 @@ class AllocationHistoryService(BaseService):
         if isinstance(value, int):
             return max(value, 0), []
 
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, list | tuple | set):
             details = [item for item in value if item is not None]
             return len(details), details
 
         if isinstance(value, dict):
             count = value.get("count")
             details_source = value.get("details") or value.get("items")
-            details: List[Any] = []
-            if isinstance(details_source, (list, tuple, set)):
+            details: list[Any] = []
+            if isinstance(details_source, list | tuple | set):
                 details = [item for item in details_source if item is not None]
             elif details_source is not None:
                 details = [details_source]
@@ -457,13 +457,13 @@ class AllocationHistoryService(BaseService):
         # Fallback for string or other scalar representations
         return 1, [value]
 
-    def _read_history(self) -> List[Dict[str, Any]]:
+    def _read_history(self) -> list[dict[str, Any]]:
         """Read history from disk."""
         try:
             if not self.HISTORY_FILE.exists():
                 return []
 
-            with open(self.HISTORY_FILE, "r", encoding="utf-8") as f:
+            with open(self.HISTORY_FILE, encoding="utf-8") as f:
                 data = json.load(f)
 
             # Handle legacy format or corrupted data
@@ -480,7 +480,7 @@ class AllocationHistoryService(BaseService):
             logger.error(f"Failed to read history: {e}")
             return []
 
-    def _write_history(self, history: List[Dict[str, Any]]) -> None:
+    def _write_history(self, history: list[dict[str, Any]]) -> None:
         """Write history to disk."""
         try:
             with open(self.HISTORY_FILE, "w", encoding="utf-8") as f:
@@ -490,7 +490,7 @@ class AllocationHistoryService(BaseService):
             logger.error(f"Failed to write history: {e}")
             raise
 
-    def _apply_retention_rules(self, history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _apply_retention_rules(self, history: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Apply retention rules (max entries and date cutoff)."""
         # Filter by date
         cutoff = datetime.now() - timedelta(days=self.retention_days)
@@ -503,8 +503,8 @@ class AllocationHistoryService(BaseService):
         return history
 
     def _apply_filters(
-        self, history: List[Dict[str, Any]], filters: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        self, history: list[dict[str, Any]], filters: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Apply filters to history entries."""
         filtered = history
 

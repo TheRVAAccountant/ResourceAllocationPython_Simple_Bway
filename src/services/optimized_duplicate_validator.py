@@ -3,7 +3,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Tuple
 
 from loguru import logger
 
@@ -28,7 +27,7 @@ class DuplicateAssignment:
     """Represents a duplicate vehicle assignment conflict."""
 
     vehicle_id: str
-    assignments: List[VehicleAssignment]
+    assignments: list[VehicleAssignment]
     conflict_level: str = "warning"  # "warning" or "error"
     resolution_suggestion: str = ""
 
@@ -48,8 +47,8 @@ class ValidationResult:
 
     is_valid: bool
     duplicate_count: int = 0
-    duplicates: Dict[str, DuplicateAssignment] = field(default_factory=dict)
-    warnings: List[str] = field(default_factory=list)
+    duplicates: dict[str, DuplicateAssignment] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
     def has_duplicates(self) -> bool:
         """Check if any duplicates were found."""
@@ -76,7 +75,7 @@ class OptimizedDuplicateValidator(BaseService):
     CONFLICT_TEMPLATE = "Vehicle {} assigned to multiple routes: {} (Drivers: {})"
     SUGGESTION_TEMPLATE = "Suggestion: Keep assignment to route {}, remove from routes: {}"
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """Initialize the validator.
 
         Args:
@@ -91,7 +90,7 @@ class OptimizedDuplicateValidator(BaseService):
         self._processed_vehicles = set()
 
     def validate_allocations(
-        self, allocation_results: List[Dict], progress_callback: Optional[callable] = None
+        self, allocation_results: list[dict], progress_callback: callable | None = None
     ) -> ValidationResult:
         """
         Validate allocation results for duplicate vehicle assignments.
@@ -180,7 +179,7 @@ class OptimizedDuplicateValidator(BaseService):
         logger.info(f"Validation complete: {result.get_summary()}")
         return result
 
-    def _suggest_resolution_fast(self, assignments: List[VehicleAssignment]) -> str:
+    def _suggest_resolution_fast(self, assignments: list[VehicleAssignment]) -> str:
         """
         Suggest resolution for duplicate assignments with better performance.
 
@@ -202,7 +201,7 @@ class OptimizedDuplicateValidator(BaseService):
         return self.SUGGESTION_TEMPLATE.format(keep_route, ", ".join(remove_routes))
 
     def mark_duplicates_in_results_inplace(
-        self, allocation_results: List[Dict], validation_result: ValidationResult
+        self, allocation_results: list[dict], validation_result: ValidationResult
     ) -> None:
         """
         Mark duplicate assignments in allocation results IN-PLACE.
@@ -237,8 +236,8 @@ class OptimizedDuplicateValidator(BaseService):
                 result["Conflict Level"] = duplicate.conflict_level
 
     def validate_with_early_exit(
-        self, allocation_results: List[Dict], stop_on_first: bool = False
-    ) -> Tuple[bool, Optional[str]]:
+        self, allocation_results: list[dict], stop_on_first: bool = False
+    ) -> tuple[bool, str | None]:
         """
         Fast validation with early exit option.
 
@@ -249,23 +248,22 @@ class OptimizedDuplicateValidator(BaseService):
         Returns:
             Tuple of (is_valid, first_duplicate_message).
         """
-        seen_vehicles: Set[str] = set()
+        seen_vehicles: set[str] = set()
 
         for result in allocation_results:
             van_id = result.get("Van ID")
             if not van_id:
                 continue
 
-            if van_id in seen_vehicles:
-                if stop_on_first:
-                    message = f"Duplicate found: Vehicle {van_id}"
-                    return False, message
+            if stop_on_first and van_id in seen_vehicles:
+                message = f"Duplicate found: Vehicle {van_id}"
+                return False, message
 
             seen_vehicles.add(van_id)
 
         return True, None
 
-    def get_duplicate_statistics(self, validation_result: ValidationResult) -> Dict[str, any]:
+    def get_duplicate_statistics(self, validation_result: ValidationResult) -> dict[str, any]:
         """
         Get detailed statistics about duplicates for reporting.
 

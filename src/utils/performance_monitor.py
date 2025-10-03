@@ -1,5 +1,7 @@
 """Performance monitoring utility for tracking and reporting performance metrics."""
 
+from __future__ import annotations
+
 import functools
 import json
 import threading
@@ -8,7 +10,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 import psutil
 from loguru import logger
@@ -25,7 +27,7 @@ class PerformanceMetric:
     memory_before: float
     memory_after: float
     memory_delta: float
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def memory_mb(self) -> float:
@@ -56,9 +58,9 @@ class PerformanceMonitor:
             enable_memory_tracking: Whether to track memory usage.
         """
         self.enable_memory_tracking = enable_memory_tracking
-        self.metrics: List[PerformanceMetric] = []
-        self.operation_stats: Dict[str, List[float]] = defaultdict(list)
-        self.active_operations: Dict[int, Dict] = {}
+        self.metrics: list[PerformanceMetric] = []
+        self.operation_stats: dict[str, list[float]] = defaultdict(list)
+        self.active_operations: dict[int, dict[str, Any]] = {}
         self.process = psutil.Process()
         self._lock = threading.Lock()
 
@@ -89,7 +91,7 @@ class PerformanceMonitor:
 
         return decorator
 
-    def measure_operation(self, operation_name: str, metadata: Optional[Dict] = None):
+    def measure_operation(self, operation_name: str, metadata: dict[str, Any] | None = None):
         """Context manager for measuring operation performance.
 
         Usage:
@@ -134,7 +136,7 @@ class PerformanceMonitor:
             logger.error(f"Failed to get memory usage: {e}")
             return 0.0
 
-    def get_summary(self, operation_filter: Optional[str] = None) -> Dict[str, Any]:
+    def get_summary(self, operation_filter: str | None = None) -> dict[str, Any]:
         """Get performance summary statistics.
 
         Args:
@@ -169,7 +171,9 @@ class PerformanceMonitor:
 
         return summary
 
-    def _get_operation_breakdown(self, metrics: List[PerformanceMetric]) -> Dict[str, Dict]:
+    def _get_operation_breakdown(
+        self, metrics: list[PerformanceMetric]
+    ) -> dict[str, dict[str, float]]:
         """Get breakdown by operation type."""
         breakdown = defaultdict(lambda: {"count": 0, "total_time": 0, "total_memory_mb": 0})
 
@@ -180,14 +184,14 @@ class PerformanceMonitor:
             breakdown[op_type]["total_memory_mb"] += metric.memory_mb
 
         # Calculate averages
-        for op_type, stats in breakdown.items():
+        for _op_type, stats in breakdown.items():
             if stats["count"] > 0:
                 stats["avg_time"] = stats["total_time"] / stats["count"]
                 stats["avg_memory_mb"] = stats["total_memory_mb"] / stats["count"]
 
         return dict(breakdown)
 
-    def generate_report(self, output_path: Optional[str] = None) -> str:
+    def generate_report(self, output_path: str | None = None) -> str:
         """Generate a detailed performance report.
 
         Args:
@@ -280,7 +284,7 @@ class PerformanceMonitor:
 class OperationContext:
     """Context manager for tracking individual operations."""
 
-    def __init__(self, monitor: PerformanceMonitor, operation: str, metadata: Dict):
+    def __init__(self, monitor: PerformanceMonitor, operation: str, metadata: dict[str, Any]):
         self.monitor = monitor
         self.operation = operation
         self.metadata = metadata

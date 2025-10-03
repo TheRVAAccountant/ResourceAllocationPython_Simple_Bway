@@ -3,7 +3,7 @@
 import time
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -43,7 +43,7 @@ class BaseService(ABC):
     and configuration management.
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the base service.
 
         Args:
@@ -108,7 +108,7 @@ class BaseService(ABC):
         """
         return self._initialized
 
-    def cache_get(self, key: str) -> Optional[Any]:
+    def cache_get(self, key: str) -> Any | None:
         """Get a value from the cache.
 
         Args:

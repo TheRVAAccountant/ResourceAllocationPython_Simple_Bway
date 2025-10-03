@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, validator
 
@@ -50,12 +50,12 @@ class Vehicle(BaseModel):
     location: str
     status: str = "available"
     priority: int = Field(default=50, ge=0, le=100)
-    capacity: Optional[int] = None
-    fuel_level: Optional[Decimal] = None
-    mileage: Optional[int] = None
-    last_service_date: Optional[date] = None
-    assigned_driver: Optional[str] = None
-    notes: Optional[str] = None
+    capacity: int | None = None
+    fuel_level: Decimal | None = None
+    mileage: int | None = None
+    last_service_date: date | None = None
+    assigned_driver: str | None = None
+    notes: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @validator("vehicle_number")
@@ -96,11 +96,11 @@ class Driver(BaseModel):
     license_type: str = "standard"
     certifications: list[str] = Field(default_factory=list)
     assigned_vehicles: list[str] = Field(default_factory=list)
-    shift_start: Optional[datetime] = None
-    shift_end: Optional[datetime] = None
+    shift_start: datetime | None = None
+    shift_end: datetime | None = None
     max_vehicles: int = 3
     preferred_vehicle_types: list[VehicleType] = Field(default_factory=list)
-    notes: Optional[str] = None
+    notes: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @validator("name")
@@ -135,8 +135,8 @@ class AllocationRequest(BaseModel):
     drivers: list[Driver]
     allocation_date: date = Field(default_factory=date.today)
     priority: Priority = Priority.MEDIUM
-    requested_by: Optional[str] = None
-    notes: Optional[str] = None
+    requested_by: str | None = None
+    notes: str | None = None
     constraints: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
@@ -171,10 +171,10 @@ class AllocationResult(BaseModel):
     request_id: str
     allocations: dict[str, list[str]]  # driver_id -> list of vehicle_ids
     unallocated_vehicles: list[str]
-    metrics: Optional[Any] = None  # AllocationMetrics from engine
+    metrics: Any | None = None  # AllocationMetrics from engine
     status: AllocationStatus = AllocationStatus.PENDING
     timestamp: datetime = Field(default_factory=datetime.now)
-    processing_time: Optional[float] = None
+    processing_time: float | None = None
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -226,9 +226,9 @@ class AllocationHistory(BaseModel):
     history_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     result: AllocationResult
     action: str  # "created", "modified", "cancelled", etc.
-    performed_by: Optional[str] = None
+    performed_by: str | None = None
     timestamp: datetime = Field(default_factory=datetime.now)
-    notes: Optional[str] = None
+    notes: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     class Config:

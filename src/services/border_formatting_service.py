@@ -1,14 +1,13 @@
 """Border formatting service for Excel with daily sections."""
 
-from datetime import date, datetime
-from typing import Any, Optional
+from datetime import date
+from typing import Any
 
 from loguru import logger
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
 
 from src.core.base_service import BaseService, error_handler, timer
-from src.models.excel import BorderStyle, ExcelColor, ExcelRange
+from src.models.excel import BorderStyle, ExcelRange
 
 
 class BorderFormattingService(BaseService):
@@ -18,7 +17,7 @@ class BorderFormattingService(BaseService):
     similar to the original Google Sheets implementation.
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the border formatting service.
 
         Args:
@@ -59,7 +58,7 @@ class BorderFormattingService(BaseService):
         end_row: int,
         end_col: int,
         section_date: date,
-        title: Optional[str] = None,
+        title: str | None = None,
     ) -> None:
         """Create a daily section with thick borders.
 
@@ -187,7 +186,7 @@ class BorderFormattingService(BaseService):
         start_col: int,
         end_col: int,
         section_date: date,
-        title: Optional[str] = None,
+        title: str | None = None,
     ) -> None:
         """Create a section header with date and title.
 
@@ -375,11 +374,11 @@ class BorderFormattingService(BaseService):
 
     def apply_conditional_formatting(
         self,
-        sheet: Any,
+        _sheet: Any,
         range_obj: ExcelRange,
-        condition_type: str,
-        values: list[Any],
-        format_style: dict[str, Any],
+        _condition_type: str,
+        _values: list[Any],
+        _format_style: dict[str, Any],
     ) -> None:
         """Apply conditional formatting to a range.
 

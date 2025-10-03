@@ -6,7 +6,6 @@ Provides real-time monitoring, performance tracking, and automated alerting.
 import asyncio
 import json
 import logging
-import os
 import smtplib
 import time
 from dataclasses import dataclass, field
@@ -14,7 +13,7 @@ from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import psutil
 from cachetools import TTLCache
@@ -30,9 +29,9 @@ class PerformanceMetric:
     value: float
     timestamp: datetime
     unit: str
-    threshold_warning: Optional[float] = None
-    threshold_critical: Optional[float] = None
-    tags: Dict[str, str] = field(default_factory=dict)
+    threshold_warning: float | None = None
+    threshold_critical: float | None = None
+    tags: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -43,11 +42,11 @@ class Alert:
     title: str
     message: str
     timestamp: datetime
-    metric_name: Optional[str] = None
-    current_value: Optional[float] = None
-    threshold: Optional[float] = None
+    metric_name: str | None = None
+    current_value: float | None = None
+    threshold: float | None = None
     resolved: bool = False
-    acknowledgement: Optional[str] = None
+    acknowledgement: str | None = None
 
 
 class MonitoringService:
@@ -58,7 +57,7 @@ class MonitoringService:
     and automated alerting for production operations.
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """
         Initialize monitoring service.
 
@@ -83,8 +82,8 @@ class MonitoringService:
         }
 
         # Alert state tracking
-        self.active_alerts: Dict[str, Alert] = {}
-        self.alert_history: List[Alert] = []
+        self.active_alerts: dict[str, Alert] = {}
+        self.alert_history: list[Alert] = []
 
         # Monitoring state
         self.monitoring_active = False
@@ -93,7 +92,7 @@ class MonitoringService:
 
         logger.info("Monitoring service initialized")
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Load monitoring configuration."""
         default_config = {
             "monitoring_interval": 300,  # 5 minutes
@@ -114,7 +113,7 @@ class MonitoringService:
 
         if self.config_path.exists():
             try:
-                with open(self.config_path, "r") as f:
+                with open(self.config_path) as f:
                     config = json.load(f)
                 # Merge with defaults
                 default_config.update(config)
@@ -125,7 +124,7 @@ class MonitoringService:
         return default_config
 
     def record_metric(
-        self, name: str, value: float, unit: str = "count", tags: Optional[Dict[str, str]] = None
+        self, name: str, value: float, unit: str = "count", tags: dict[str, str] | None = None
     ) -> None:
         """
         Record a performance metric.
@@ -253,7 +252,7 @@ Resource Allocation Monitoring System
         except Exception as e:
             logger.error(f"Failed to send alert email: {e}")
 
-    def check_system_health(self) -> Dict[str, Any]:
+    def check_system_health(self) -> dict[str, Any]:
         """
         Perform comprehensive system health check.
 
@@ -325,15 +324,15 @@ Resource Allocation Monitoring System
 
         return health_status
 
-    def _check_application_health(self) -> Dict[str, Any]:
+    def _check_application_health(self) -> dict[str, Any]:
         """Check application-specific health indicators."""
         try:
             from src.core.gas_compatible_allocator import GASCompatibleAllocator
             from src.services.excel_service import ExcelService
 
             # Test core services
-            allocator = GASCompatibleAllocator()
-            excel_service = ExcelService()
+            _ = GASCompatibleAllocator()
+            _ = ExcelService()
 
             return {
                 "status": "healthy",
@@ -344,7 +343,7 @@ Resource Allocation Monitoring System
         except Exception as e:
             return {"status": "critical", "error": str(e), "services_loaded": False}
 
-    def _check_excel_connectivity(self) -> Dict[str, Any]:
+    def _check_excel_connectivity(self) -> dict[str, Any]:
         """Check Excel application connectivity."""
         try:
             import xlwings as xw
@@ -357,7 +356,7 @@ Resource Allocation Monitoring System
         except Exception as e:
             return {"status": "warning", "excel_available": False, "error": str(e)}
 
-    def _check_filesystem_health(self) -> Dict[str, Any]:
+    def _check_filesystem_health(self) -> dict[str, Any]:
         """Check filesystem health and accessibility."""
         check_paths = [Path("data"), Path("outputs"), Path("logs"), Path("config")]
 
@@ -381,7 +380,7 @@ Resource Allocation Monitoring System
 
         return {"status": status, "paths": path_statuses}
 
-    def get_performance_summary(self, hours: int = 24) -> Dict[str, Any]:
+    def get_performance_summary(self, hours: int = 24) -> dict[str, Any]:
         """
         Get performance summary for the specified time period.
 
@@ -426,7 +425,7 @@ Resource Allocation Monitoring System
 
         return summary
 
-    def get_alert_summary(self) -> Dict[str, Any]:
+    def get_alert_summary(self) -> dict[str, Any]:
         """Get summary of current alerts and alert history."""
         active_by_severity = {}
         for alert in self.active_alerts.values():
@@ -458,7 +457,7 @@ Resource Allocation Monitoring System
         try:
             while self.monitoring_active:
                 # Perform health check
-                health_status = self.check_system_health()
+                self.check_system_health()
 
                 # Record system metrics
                 self.record_metric(
@@ -588,13 +587,13 @@ def get_monitoring_service() -> MonitoringService:
 
 # Convenience functions for easy access
 def record_metric(
-    name: str, value: float, unit: str = "count", tags: Optional[Dict[str, str]] = None
+    name: str, value: float, unit: str = "count", tags: dict[str, str] | None = None
 ) -> None:
     """Record a performance metric."""
     get_monitoring_service().record_metric(name, value, unit, tags)
 
 
-def check_health() -> Dict[str, Any]:
+def check_health() -> dict[str, Any]:
     """Perform system health check."""
     return get_monitoring_service().check_system_health()
 
@@ -603,7 +602,7 @@ def check_health() -> Dict[str, Any]:
 class performance_timer:
     """Context manager for timing operations and recording metrics."""
 
-    def __init__(self, metric_name: str, tags: Optional[Dict[str, str]] = None):
+    def __init__(self, metric_name: str, tags: dict[str, str] | None = None):
         self.metric_name = metric_name
         self.tags = tags or {}
         self.start_time = None

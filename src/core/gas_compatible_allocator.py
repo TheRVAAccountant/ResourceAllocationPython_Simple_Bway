@@ -4,7 +4,7 @@ import time
 from collections import defaultdict
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -266,7 +266,7 @@ class GASCompatibleAllocator:
 
             # Log sample data to verify content
             if len(df) > 0:
-                logger.info(f"Sample Vehicle Log data (first row):")
+                logger.info("Sample Vehicle Log data (first row):")
                 first_row = df.iloc[0]
                 for col in df.columns:
                     logger.debug(f"  {col}: {first_row[col]}")
@@ -286,7 +286,7 @@ class GASCompatibleAllocator:
             )
             return self.vehicle_log_data
 
-    def get_van_type(self, service_type: str) -> Optional[str]:
+    def get_van_type(self, service_type: str) -> str | None:
         """Map service type to required van type.
 
         Exactly matches GAS logic:
@@ -315,7 +315,7 @@ class GASCompatibleAllocator:
         logger.debug(f"No van type mapping for service type: {service_type}")
         return None
 
-    def _normalize_brand_label(self, value: Any) -> Optional[str]:
+    def _normalize_brand_label(self, value: Any) -> str | None:
         """Normalize raw Branded/Rental values to priority buckets."""
         if value is None:
             return None
@@ -333,9 +333,9 @@ class GASCompatibleAllocator:
             return "rental"
         return None
 
-    def _build_brand_priority_map(self, operational_vehicles: pd.DataFrame) -> Dict[str, str]:
+    def _build_brand_priority_map(self, operational_vehicles: pd.DataFrame) -> dict[str, str]:
         """Build a mapping of van IDs to branded/rental priority labels."""
-        brand_map: Dict[str, str] = {}
+        brand_map: dict[str, str] = {}
 
         def _update_from_df(df: pd.DataFrame):
             if df is None or df.empty:
@@ -378,7 +378,7 @@ class GASCompatibleAllocator:
 
     def allocate_vehicles_to_routes(
         self, bway_routes: pd.DataFrame = None
-    ) -> Tuple[List[Dict], List[str]]:
+    ) -> tuple[list[dict], list[str]]:
         """Allocate vehicles to routes using GAS logic.
 
         Process:
@@ -440,7 +440,7 @@ class GASCompatibleAllocator:
 
         logger.info(f"Starting allocation for {len(bway_routes)} routes")
 
-        for idx, (_, route) in enumerate(bway_routes.iterrows()):
+        for _idx, (_, route) in enumerate(bway_routes.iterrows()):
             service_type = route["Service Type"]
             required_van_type = self.get_van_type(service_type)
 
@@ -497,7 +497,7 @@ class GASCompatibleAllocator:
 
         return allocation_results, assigned_van_ids
 
-    def map_driver_names(self) -> List[Dict]:
+    def map_driver_names(self) -> list[dict]:
         """Map driver names from Daily Routes to allocation results.
 
         Returns:
@@ -505,7 +505,7 @@ class GASCompatibleAllocator:
         """
         return self.update_with_driver_names()
 
-    def update_with_driver_names(self) -> List[Dict]:
+    def update_with_driver_names(self) -> list[dict]:
         """Update allocation results with driver names from Daily Routes.
 
         Matches GAS updateResultsWithDailyRoutes logic.
@@ -653,15 +653,15 @@ class GASCompatibleAllocator:
     def record_history(
         self,
         allocation_result: AllocationResult,
-        files: Optional[Dict[str, str]] = None,
-        error: Optional[str] = None,
+        files: dict[str, str] | None = None,
+        error: str | None = None,
     ) -> None:
         """Persist the allocation run to history with consistent defaults."""
         duplicate_conflicts = 0
         metadata = getattr(allocation_result, "metadata", {}) or {}
         if metadata:
             duplicate_conflicts = metadata.get("duplicate_count", 0)
-        if isinstance(duplicate_conflicts, (list, tuple, set)):
+        if isinstance(duplicate_conflicts, list | tuple | set):
             duplicate_conflicts = len([item for item in duplicate_conflicts if item is not None])
         try:
             self.history_service.save_allocation(
@@ -740,7 +740,7 @@ class GASCompatibleAllocator:
         allocation_result: AllocationResult,
         output_file: str,
         create_results_file: bool = True,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Write allocation results to Excel.
 
         Updates Daily Details in the Daily Summary Log and optionally creates
@@ -982,7 +982,7 @@ class GASCompatibleAllocator:
 
         return results_file_path
 
-    def _build_vehicle_log_dict(self) -> Dict[str, Dict]:
+    def _build_vehicle_log_dict(self) -> dict[str, dict]:
         """Build vehicle log dictionary from available data.
 
         Returns:

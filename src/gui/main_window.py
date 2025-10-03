@@ -3,12 +3,9 @@
 import json
 import os
 import sys
-import threading
-import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox
-from typing import Optional
 
 import customtkinter as ctk
 from loguru import logger
@@ -17,17 +14,17 @@ from PIL import Image, ImageTk
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.core.allocation_engine import AllocationEngine
-from src.gui.allocation_tab import AllocationTab
-from src.gui.dashboard_tab import DashboardTab
-from src.gui.data_management_tab import DataManagementTab
-from src.gui.log_viewer_tab import LogViewerTab
-from src.gui.settings_tab import SettingsTab
-from src.gui.utils import WindowManager
-from src.services.border_formatting_service import BorderFormattingService
-from src.services.dashboard_data_service import DashboardDataService
-from src.services.data_management_service import DataManagementService
-from src.services.excel_service import ExcelService
+from src.core.allocation_engine import AllocationEngine  # noqa: E402
+from src.gui.allocation_tab import AllocationTab  # noqa: E402
+from src.gui.dashboard_tab import DashboardTab  # noqa: E402
+from src.gui.data_management_tab import DataManagementTab  # noqa: E402
+from src.gui.log_viewer_tab import LogViewerTab  # noqa: E402
+from src.gui.settings_tab import SettingsTab  # noqa: E402
+from src.gui.utils import WindowManager  # noqa: E402
+from src.services.border_formatting_service import BorderFormattingService  # noqa: E402
+from src.services.dashboard_data_service import DashboardDataService  # noqa: E402
+from src.services.data_management_service import DataManagementService  # noqa: E402
+from src.services.excel_service import ExcelService  # noqa: E402
 
 # Set appearance mode and color theme
 ctk.set_appearance_mode("dark")  # Modes: "System", "Dark", "Light"
@@ -221,7 +218,7 @@ class ResourceAllocationGUI(ctk.CTk):
         """
         # If running in PyInstaller bundle
         if hasattr(sys, "_MEIPASS"):
-            base = Path(getattr(sys, "_MEIPASS"))
+            base = Path(sys._MEIPASS)
             candidate = base / "assets" / "icons" / "amazon_package.ico"
             if candidate.exists():
                 return candidate
@@ -241,7 +238,7 @@ class ResourceAllocationGUI(ctk.CTk):
         """
         # Base directory handling for source and bundled runs
         if hasattr(sys, "_MEIPASS"):
-            base = Path(getattr(sys, "_MEIPASS"))
+            base = Path(sys._MEIPASS)
             icons = base / "assets" / "icons"
         else:
             icons = Path(__file__).resolve().parent.parent.parent / "assets" / "icons"
@@ -265,7 +262,7 @@ class ResourceAllocationGUI(ctk.CTk):
             Image.open(ico).save(tmp_png, format="PNG")
             return tmp_png
         except Exception as e:
-            raise FileNotFoundError(f"No suitable header image found: {e}")
+            raise FileNotFoundError(f"No suitable header image found: {e}") from e
 
     def _set_app_icons(self):
         """Set window title bar icon and taskbar/dock icon where supported.
@@ -503,7 +500,7 @@ class ResourceAllocationGUI(ctk.CTk):
             self.appearance_mode_button.configure(text="🌙")
 
     # --- Title helpers and settings integration ---
-    def _compose_app_title(self, company_name: Optional[str]) -> str:
+    def _compose_app_title(self, company_name: str | None) -> str:
         base = "Resource Management System"
         name = (company_name or "").strip()
         return f"{name} - {base}" if name else base

@@ -3,7 +3,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -28,7 +27,7 @@ class DuplicateAssignment:
     """Represents a duplicate vehicle assignment conflict."""
 
     vehicle_id: str
-    assignments: List[VehicleAssignment]
+    assignments: list[VehicleAssignment]
     conflict_level: str = "warning"  # "warning" or "error"
     resolution_suggestion: str = ""
 
@@ -48,8 +47,8 @@ class ValidationResult:
 
     is_valid: bool
     duplicate_count: int = 0
-    duplicates: Dict[str, DuplicateAssignment] = field(default_factory=dict)
-    warnings: List[str] = field(default_factory=list)
+    duplicates: dict[str, DuplicateAssignment] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
     def has_duplicates(self) -> bool:
         """Check if any duplicates were found."""
@@ -70,7 +69,7 @@ class ValidationResult:
 class DuplicateVehicleValidator(BaseService):
     """Service for validating duplicate vehicle assignments."""
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """Initialize the validator.
 
         Args:
@@ -131,7 +130,7 @@ class DuplicateVehicleValidator(BaseService):
             logger.error(f"Error during validation: {e}")
             return False
 
-    def validate_allocations(self, allocation_results: List[Dict]) -> ValidationResult:
+    def validate_allocations(self, allocation_results: list[dict]) -> ValidationResult:
         """
         Validate allocation results for duplicate vehicle assignments.
 
@@ -144,7 +143,7 @@ class DuplicateVehicleValidator(BaseService):
         logger.info(f"Validating {len(allocation_results)} allocations for duplicates")
 
         # Track vehicle assignments
-        vehicle_assignments: Dict[str, List[VehicleAssignment]] = defaultdict(list)
+        vehicle_assignments: dict[str, list[VehicleAssignment]] = defaultdict(list)
 
         # Build assignment map
         for result in allocation_results:
@@ -195,7 +194,7 @@ class DuplicateVehicleValidator(BaseService):
         logger.info(f"Validation complete: {result.get_summary()}")
         return result
 
-    def _suggest_resolution(self, assignments: List[VehicleAssignment]) -> str:
+    def _suggest_resolution(self, assignments: list[VehicleAssignment]) -> str:
         """
         Suggest resolution for duplicate assignments.
 
@@ -218,7 +217,7 @@ class DuplicateVehicleValidator(BaseService):
 
         return "Review assignments and remove duplicates"
 
-    def validate_driver_vehicles(self, allocations: Dict[str, List[str]]) -> ValidationResult:
+    def validate_driver_vehicles(self, allocations: dict[str, list[str]]) -> ValidationResult:
         """
         Validate allocations from driver perspective (AllocationResult format).
 
@@ -231,7 +230,7 @@ class DuplicateVehicleValidator(BaseService):
         logger.info("Validating driver-vehicle allocations")
 
         # Invert the mapping to check for duplicate vehicles
-        vehicle_to_drivers: Dict[str, List[str]] = defaultdict(list)
+        vehicle_to_drivers: dict[str, list[str]] = defaultdict(list)
 
         for driver_id, vehicle_ids in allocations.items():
             for vehicle_id in vehicle_ids:
@@ -280,8 +279,8 @@ class DuplicateVehicleValidator(BaseService):
         return result
 
     def mark_duplicates_in_results(
-        self, allocation_results: List[Dict], validation_result: ValidationResult
-    ) -> List[Dict]:
+        self, allocation_results: list[dict], validation_result: ValidationResult
+    ) -> list[dict]:
         """
         Mark duplicate assignments in allocation results.
 
@@ -316,7 +315,7 @@ class DuplicateVehicleValidator(BaseService):
 
         return marked_results
 
-    def generate_duplicate_report(self, validation_result: ValidationResult) -> Dict[str, any]:
+    def generate_duplicate_report(self, validation_result: ValidationResult) -> dict[str, any]:
         """
         Generate a detailed duplicate report.
 

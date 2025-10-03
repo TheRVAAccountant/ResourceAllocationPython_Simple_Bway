@@ -3,7 +3,7 @@
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import customtkinter as ctk
 from loguru import logger
@@ -21,7 +21,7 @@ class AllocationDetailsModal(ctk.CTkToplevel):
     - Export options
     """
 
-    def __init__(self, parent, entry: Dict[str, Any], **kwargs):
+    def __init__(self, parent, entry: dict[str, Any], **kwargs):
         """Initialize allocation details modal.
 
         Args:
@@ -277,7 +277,7 @@ class AllocationDetailsModal(ctk.CTkToplevel):
 
         # Simple tooltip: show in status when hovering
         # Full implementation would use a Toplevel window
-        def on_enter(event):
+        def on_enter(_event):
             logger.debug(f"Tooltip: {text}")
 
         widget.bind("<Enter>", on_enter)
@@ -293,23 +293,23 @@ class AllocationDetailsModal(ctk.CTkToplevel):
         details = self._resolve_duplicate_details()
         if details:
             return len(details)
-        if isinstance(raw, (list, tuple, set)):
+        if isinstance(raw, list | tuple | set):
             return len([item for item in raw if item is not None])
         if not raw:
             return 0
         return 1
 
-    def _resolve_duplicate_details(self) -> List[Any]:
+    def _resolve_duplicate_details(self) -> list[Any]:
         """Return normalized duplicate conflict detail list."""
         details = self.entry.get("duplicate_conflict_details")
         if isinstance(details, list):
             return [item for item in details if item is not None]
-        if isinstance(details, (tuple, set)):
+        if isinstance(details, tuple | set):
             return [item for item in details if item is not None]
         raw = self.entry.get("duplicate_conflicts")
         if isinstance(raw, list):
             return [item for item in raw if item is not None]
-        if isinstance(raw, (tuple, set)):
+        if isinstance(raw, tuple | set):
             return [item for item in raw if item is not None]
         return []
 

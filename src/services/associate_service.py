@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import Iterable, List, Optional
 
 import pandas as pd
 from loguru import logger
@@ -20,7 +20,7 @@ class _AssociateCache:
 
     path: Path
     mtime: float
-    records: List[AssociateRecord]
+    records: list[AssociateRecord]
 
 
 class AssociateService:
@@ -28,7 +28,7 @@ class AssociateService:
 
     def __init__(
         self,
-        settings: Optional[dict] = None,
+        settings: dict | None = None,
         *,
         settings_file: Path = Path("config/settings.json"),
         expiration_warning_days: int = 90,
@@ -36,29 +36,29 @@ class AssociateService:
         self._settings = settings or self._load_settings(settings_file)
         self._settings_file = settings_file
         self.expiration_warning_days = expiration_warning_days
-        self._cache: Optional[_AssociateCache] = None
+        self._cache: _AssociateCache | None = None
 
     # ------------------------------------------------------------------
     # Settings helpers
     def _load_settings(self, settings_file: Path) -> dict:
         try:
             if settings_file.exists():
-                with open(settings_file, "r", encoding="utf-8") as handle:
+                with open(settings_file, encoding="utf-8") as handle:
                     return json.load(handle) or {}
         except Exception as exc:
             logger.debug(f"AssociateService settings load failed: {exc}")
         return {}
 
-    def update_settings(self, settings: Optional[dict]) -> None:
+    def update_settings(self, settings: dict | None) -> None:
         """Replace the active settings dictionary and clear cache."""
         self._settings = settings or {}
         self._cache = None
 
     # ------------------------------------------------------------------
     # Path resolution
-    def resolve_associate_path(self, explicit_path: Optional[str] = None) -> Optional[Path]:
+    def resolve_associate_path(self, explicit_path: str | None = None) -> Path | None:
         """Resolve the associate CSV path using explicit value, settings, or default."""
-        candidates: Iterable[Optional[str]] = (
+        candidates: Iterable[str | None] = (
             explicit_path,
             self._settings.get("associate_data_path") if self._settings else None,
             str(Path("inputs") / "AssociateData.csv"),
@@ -74,8 +74,8 @@ class AssociateService:
     # ------------------------------------------------------------------
     # Public API
     def load_associates(
-        self, path: Optional[str] = None, *, force_reload: bool = False
-    ) -> List[AssociateRecord]:
+        self, path: str | None = None, *, force_reload: bool = False
+    ) -> list[AssociateRecord]:
         """Load associates from CSV, applying normalization and caching."""
         resolved = self.resolve_associate_path(path)
         if not resolved:
@@ -111,7 +111,7 @@ class AssociateService:
 
     # ------------------------------------------------------------------
     # Conversion helpers
-    def _frame_to_records(self, frame: pd.DataFrame) -> List[AssociateRecord]:
+    def _frame_to_records(self, frame: pd.DataFrame) -> list[AssociateRecord]:
         normalized_columns = {self._normalize_column_name(c): c for c in frame.columns}
         try:
             name_col = normalized_columns["name_and_id"]
@@ -128,7 +128,7 @@ class AssociateService:
             return []
 
         today = date.today()
-        records: List[AssociateRecord] = []
+        records: list[AssociateRecord] = []
         for _, row in frame.iterrows():
             name = str(row.get(name_col, "")).strip()
             transporter = str(row.get(transporter_col, "")).strip()
@@ -137,7 +137,7 @@ class AssociateService:
 
             expiration_raw = row.get(expiration_col) if expiration_col else None
             expiration_date = self._parse_date(expiration_raw)
-            delta_days: Optional[int] = None
+            delta_days: int | None = None
             is_expired = False
             is_expiring_soon = False
             if expiration_date:
@@ -176,7 +176,7 @@ class AssociateService:
         return column.lower().strip().replace(" ", "_")
 
     @staticmethod
-    def _normalize_phone(value: Optional[object]) -> str:
+    def _normalize_phone(value: object | None) -> str:
         if value is None:
             return ""
         digits = "".join(ch for ch in str(value) if ch.isdigit())
@@ -185,7 +185,7 @@ class AssociateService:
         return digits
 
     @staticmethod
-    def _parse_date(value: Optional[object]) -> Optional[date]:
+    def _parse_date(value: object | None) -> date | None:
         if value is None or value == "":
             return None
         try:

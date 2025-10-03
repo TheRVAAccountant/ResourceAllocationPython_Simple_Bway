@@ -1,22 +1,14 @@
 """Validation service for data integrity checks."""
 
 import re
-from datetime import date, datetime, timedelta
-from decimal import Decimal
-from typing import Any, Optional, Union
+from datetime import date, timedelta
+from typing import Any
 
 import pandas as pd
 from loguru import logger
 
 from src.core.base_service import BaseService, error_handler
-from src.models.allocation import (
-    AllocationRequest,
-    AllocationResult,
-    Driver,
-    Priority,
-    Vehicle,
-    VehicleType,
-)
+from src.models.allocation import AllocationRequest, AllocationResult, Driver, Vehicle
 
 
 class ValidationRule:
@@ -36,7 +28,7 @@ class ValidationRule:
         self.error_message = error_message
         self.severity = severity
 
-    def validate(self, value: Any) -> tuple[bool, Optional[str]]:
+    def validate(self, value: Any) -> tuple[bool, str | None]:
         """Run validation.
 
         Args:
@@ -83,7 +75,7 @@ class ValidationResult:
         """
         return len(self.warnings) > 0
 
-    def add_error(self, message: str, rule_name: Optional[str] = None):
+    def add_error(self, message: str, rule_name: str | None = None):
         """Add error message.
 
         Args:
@@ -143,7 +135,7 @@ class ValidationService(BaseService):
     allocation requests, and results.
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the validation service.
 
         Args:
@@ -313,9 +305,8 @@ class ValidationService(BaseService):
                     result.add_info(error_msg)
 
         # Additional checks
-        if driver.shift_start and driver.shift_end:
-            if driver.shift_start >= driver.shift_end:
-                result.add_error("Shift start time must be before end time")
+        if driver.shift_start and driver.shift_end and driver.shift_start >= driver.shift_end:
+            result.add_error("Shift start time must be before end time")
 
         if driver.assigned_vehicles and len(driver.assigned_vehicles) > driver.max_vehicles:
             result.add_warning(
@@ -402,7 +393,7 @@ class ValidationService(BaseService):
 
         # Check for duplicate vehicle assignments
         all_allocated = []
-        for driver_id, vehicles in result.allocations.items():
+        for _driver_id, vehicles in result.allocations.items():
             all_allocated.extend(vehicles)
 
         if len(all_allocated) != len(set(all_allocated)):

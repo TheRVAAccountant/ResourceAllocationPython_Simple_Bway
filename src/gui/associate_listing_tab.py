@@ -7,7 +7,6 @@ import os
 import platform
 from datetime import date, datetime
 from tkinter import filedialog, messagebox, ttk
-from typing import List, Optional
 
 import customtkinter as ctk
 from loguru import logger
@@ -25,7 +24,7 @@ class AssociateListingTab:
         parent: ctk.CTkFrame,
         *,
         associate_service: AssociateService,
-        settings: Optional[dict] = None,
+        settings: dict | None = None,
     ) -> None:
         self.parent = parent
         self.parent.grid_columnconfigure(0, weight=1)
@@ -34,17 +33,17 @@ class AssociateListingTab:
         self.associate_service = associate_service
         self.settings = settings or {}
 
-        self._associate_path: Optional[str] = self.settings.get("associate_data_path")
+        self._associate_path: str | None = self.settings.get("associate_data_path")
         self.auto_refresh_enabled: bool = bool(self.settings.get("auto_refresh_associates", False))
         self.refresh_interval_minutes: int = self._safe_int(
             self.settings.get("associate_refresh_interval_minutes", 10), default=10
         )
-        self._auto_refresh_job: Optional[str] = None
+        self._auto_refresh_job: str | None = None
 
-        self.records: List[AssociateRecord] = []
-        self.filtered_records: List[AssociateRecord] = []
+        self.records: list[AssociateRecord] = []
+        self.filtered_records: list[AssociateRecord] = []
         self._row_tooltip_text: dict[str, str] = {}
-        self._current_hover_item: Optional[str] = None
+        self._current_hover_item: str | None = None
 
         self.search_var = ctk.StringVar(value="")
         self.status_var = ctk.StringVar(value="All")
@@ -274,7 +273,7 @@ class AssociateListingTab:
         self._populate_tree(filtered)
         self._update_summary(filtered)
 
-    def _populate_tree(self, records: List[AssociateRecord]) -> None:
+    def _populate_tree(self, records: list[AssociateRecord]) -> None:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
@@ -286,7 +285,7 @@ class AssociateListingTab:
             personal_phone = self._format_phone(record.personal_phone)
             work_phone = self._format_phone(record.work_phone)
 
-            tags: List[str] = []
+            tags: list[str] = []
             if record.is_expired:
                 tags.append("expired")
             elif record.is_expiring_soon:
@@ -326,7 +325,7 @@ class AssociateListingTab:
         if not records:
             self.summary_label.configure(text="No associate records found.")
 
-    def _update_summary(self, filtered: List[AssociateRecord]) -> None:
+    def _update_summary(self, filtered: list[AssociateRecord]) -> None:
         total = len(self.records)
         visible = len(filtered)
         active = sum(1 for record in filtered if record.is_active)
@@ -416,7 +415,7 @@ class AssociateListingTab:
 
     # ------------------------------------------------------------------
     # Settings
-    def update_settings(self, settings: Optional[dict]) -> None:
+    def update_settings(self, settings: dict | None) -> None:
         self.settings = settings or {}
         self._associate_path = self.settings.get("associate_data_path")
         self.auto_refresh_enabled = bool(self.settings.get("auto_refresh_associates", False))
@@ -452,13 +451,13 @@ class AssociateListingTab:
         return 0 <= record.days_until_expiration <= days
 
     @staticmethod
-    def _format_date(value: Optional[date]) -> str:
+    def _format_date(value: date | None) -> str:
         if not value:
             return "—"
         return value.strftime("%Y-%m-%d")
 
     @staticmethod
-    def _format_days(value: Optional[int]) -> str:
+    def _format_days(value: int | None) -> str:
         if value is None:
             return ""
         if value < 0:

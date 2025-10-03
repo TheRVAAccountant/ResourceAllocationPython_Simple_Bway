@@ -1,8 +1,8 @@
 """Recent Files Popup widget for displaying recent file selections."""
 
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Optional
 
 import customtkinter as ctk
 from loguru import logger
@@ -200,12 +200,12 @@ class RecentFilesPopup(ctk.CTkToplevel):
 
         # Make entire frame clickable
         if file_info.exists:
-            item_frame.bind("<Button-1>", lambda e: self._select_file(file_info.path))
+            item_frame.bind("<Button-1>", lambda _event: self._select_file(file_info.path))
             item_frame.bind(
-                "<Enter>", lambda e: item_frame.configure(fg_color=("gray85", "gray25"))
+                "<Enter>", lambda _event: item_frame.configure(fg_color=("gray85", "gray25"))
             )
             item_frame.bind(
-                "<Leave>", lambda e: item_frame.configure(fg_color=("gray90", "gray20"))
+                "<Leave>", lambda _event: item_frame.configure(fg_color=("gray90", "gray20"))
             )
 
         # Content frame
@@ -233,8 +233,8 @@ class RecentFilesPopup(ctk.CTkToplevel):
 
         # Make labels clickable too
         if file_info.exists:
-            icon_label.bind("<Button-1>", lambda e: self._select_file(file_info.path))
-            name_label.bind("<Button-1>", lambda e: self._select_file(file_info.path))
+            icon_label.bind("<Button-1>", lambda _event: self._select_file(file_info.path))
+            name_label.bind("<Button-1>", lambda _event: self._select_file(file_info.path))
 
         # Path and metadata frame
         info_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
@@ -251,7 +251,7 @@ class RecentFilesPopup(ctk.CTkToplevel):
         path_label.pack(side="left", fill="x", expand=True)
 
         if file_info.exists:
-            path_label.bind("<Button-1>", lambda e: self._select_file(file_info.path))
+            path_label.bind("<Button-1>", lambda _event: self._select_file(file_info.path))
 
         # Last used and usage info
         try:
@@ -263,7 +263,7 @@ class RecentFilesPopup(ctk.CTkToplevel):
                 time_text = "Yesterday"
             else:
                 time_text = f"{days_ago} days ago"
-        except:
+        except (ValueError, TypeError, AttributeError):
             time_text = "Unknown"
 
         # Usage count
@@ -311,12 +311,12 @@ class RecentFilesPopup(ctk.CTkToplevel):
     def _bind_events(self):
         """Bind keyboard and mouse events."""
         # Close on Escape
-        self.bind("<Escape>", lambda e: self.destroy())
+        self.bind("<Escape>", lambda _event: self.destroy())
 
         # Close when clicking outside
         self.bind("<FocusOut>", self._check_focus_out)
 
-    def _check_focus_out(self, event):
+    def _check_focus_out(self, _event):
         """Check if focus moved outside the popup."""
         # Get the widget that received focus
         focused = self.focus_get()

@@ -2,8 +2,8 @@
 
 import threading
 import tkinter as tk
+from contextlib import suppress
 from tkinter import StringVar, filedialog, messagebox, ttk
-from typing import Optional
 
 import customtkinter as ctk
 import pandas as pd
@@ -164,17 +164,17 @@ class DataManagementTab:
         self.create_statistics_panel(vehicles_tab, "vehicles")
 
         # Configure helper tag for search hiding
-        try:
+        with suppress(Exception):
             self.vehicles_tree.tag_configure("hidden", foreground="gray")
-        except Exception:
-            pass
 
         # Prepare per-cell overlay labels for Status column coloring
         self._veh_status_labels: dict[str, tk.Label] = {}
         # Keep overlays in sync on resize/config
-        self.vehicles_tree.bind("<Configure>", lambda e: self._update_vehicle_status_overlays())
         self.vehicles_tree.bind(
-            "<<TreeviewSelect>>", lambda e: self._update_vehicle_status_overlays()
+            "<Configure>", lambda _event: self._update_vehicle_status_overlays()
+        )
+        self.vehicles_tree.bind(
+            "<<TreeviewSelect>>", lambda _event: self._update_vehicle_status_overlays()
         )
 
     def create_drivers_tab(self):
@@ -292,7 +292,8 @@ class DataManagementTab:
         search_entry = ctk.CTkEntry(toolbar, width=200, placeholder_text=f"Search {data_type}s...")
         search_entry.grid(row=0, column=5, padx=5)
         search_entry.bind(
-            "<KeyRelease>", lambda e: self.search_items(data_type, search_entry.get())
+            "<KeyRelease>",
+            lambda _event: self.search_items(data_type, search_entry.get()),
         )
 
         # Import/Export buttons
@@ -456,7 +457,7 @@ class DataManagementTab:
         """Wire a callable that returns the selected Daily Summary path."""
         self._daily_summary_path_getter = getter
 
-    def _resolve_daily_summary_path(self) -> Optional[str]:
+    def _resolve_daily_summary_path(self) -> str | None:
         try:
             if self._daily_summary_path_getter:
                 p = self._daily_summary_path_getter()
@@ -586,10 +587,8 @@ class DataManagementTab:
 
     def _forward_event_to_tree_with_seq(self, event, sequence: str):
         """Forward mouse events from overlay label to underlying treeview."""
-        try:
+        with suppress(Exception):
             self.vehicles_tree.event_generate(sequence, x=event.x, y=event.y)
-        except Exception:
-            pass
         return "break"
 
     def _update_vehicle_status_overlays(self):
@@ -603,10 +602,8 @@ class DataManagementTab:
         try:
             # Destroy existing labels
             for lbl in list(getattr(self, "_veh_status_labels", {}).values()):
-                try:
+                with suppress(Exception):
                     lbl.destroy()
-                except Exception:
-                    pass
             self._veh_status_labels.clear()
             # Determine column identifier for 'Status'
             status_col = "Status"
@@ -688,10 +685,7 @@ class DataManagementTab:
         # Headings
         self.vehicles_tree.heading("#0", text="")
         for name in cols:
-            if name == "ID":
-                text = "ID"
-            else:
-                text = name
+            text = "ID" if name == "ID" else name
             self.vehicles_tree.heading(name, text=text)
         # Widths
         self.vehicles_tree.column("#0", width=0, stretch=False)
@@ -767,11 +761,12 @@ class DataManagementTab:
         tree = self.vehicles_tree if data_type == "vehicle" else self.drivers_tree
         selected = tree.selection()
 
-        if selected:
-            if messagebox.askyesno("Confirm Delete", f"Delete {len(selected)} {data_type}(s)?"):
-                for item in selected:
-                    tree.delete(item)
-                logger.info(f"Deleted {len(selected)} {data_type}(s)")
+        if selected and messagebox.askyesno(
+            "Confirm Delete", f"Delete {len(selected)} {data_type}(s)?"
+        ):
+            for item in selected:
+                tree.delete(item)
+            logger.info(f"Deleted {len(selected)} {data_type}(s)")
 
     def search_items(self, data_type: str, search_text: str):
         """Search and filter items."""

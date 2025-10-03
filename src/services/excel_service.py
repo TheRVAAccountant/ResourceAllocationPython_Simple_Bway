@@ -1,10 +1,11 @@
 """Excel service for workbook operations using xlwings."""
 
-from datetime import date, datetime
-from pathlib import Path
-from typing import Any, Optional, Union
+from __future__ import annotations
 
-import numpy as np
+from contextlib import suppress
+from pathlib import Path
+from typing import Any
+
 import pandas as pd
 from loguru import logger
 
@@ -18,24 +19,11 @@ except ImportError:
     logger.warning("xlwings not available - Excel integration will be limited")
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment, Font, PatternFill
 
 from src.core.base_service import BaseService, error_handler, timer
 from src.models.allocation import AllocationResult
-from src.models.excel import (
-    BorderStyle,
-    ExcelAlignment,
-    ExcelBorder,
-    ExcelColor,
-    ExcelFill,
-    ExcelFont,
-    ExcelFormula,
-    ExcelRange,
-    ExcelStyle,
-    ExcelValidation,
-    ExcelWorksheet,
-)
+from src.models.excel import ExcelRange, ExcelStyle
 
 
 class ExcelService(BaseService):
@@ -46,7 +34,7 @@ class ExcelService(BaseService):
     and openpyxl (for file operations).
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the Excel service.
 
         Args:
@@ -92,22 +80,18 @@ class ExcelService(BaseService):
     def cleanup(self) -> None:
         """Clean up Excel resources."""
         if self.workbook and self.use_xlwings:
-            try:
+            with suppress(Exception):
                 self.workbook.close()
-            except:
-                pass
 
         if self.app and self.use_xlwings:
-            try:
+            with suppress(Exception):
                 self.app.quit()
-            except:
-                pass
 
         super().cleanup()
 
     @timer
     @error_handler
-    def create_workbook(self, template: Optional[str] = None) -> Union[Any, Workbook]:
+    def create_workbook(self, template: str | None = None) -> Workbook | Any:
         """Create a new workbook.
 
         Args:
@@ -121,19 +105,19 @@ class ExcelService(BaseService):
                 self.workbook = self.app.books.open(template)
             else:
                 self.workbook = self.app.books.add()
-            logger.info(f"Created xlwings workbook")
+            logger.info("Created xlwings workbook")
         else:
             if template and Path(template).exists():
                 self.workbook = load_workbook(template)
             else:
                 self.workbook = Workbook()
-            logger.info(f"Created openpyxl workbook")
+            logger.info("Created openpyxl workbook")
 
         return self.workbook
 
     @timer
     @error_handler
-    def open_workbook(self, file_path: str) -> Union[Any, Workbook]:
+    def open_workbook(self, file_path: str) -> Workbook | Any:
         """Open an existing workbook.
 
         Args:
@@ -156,7 +140,7 @@ class ExcelService(BaseService):
 
     @timer
     @error_handler
-    def save_workbook(self, file_path: Optional[str] = None) -> None:
+    def save_workbook(self, file_path: str | None = None) -> None:
         """Save the workbook.
 
         Args:
@@ -209,7 +193,7 @@ class ExcelService(BaseService):
         else:
             return list(self.workbook.sheetnames)
 
-    def create_sheet(self, sheet_name: str, position: Optional[int] = None) -> Any:
+    def create_sheet(self, sheet_name: str, position: int | None = None) -> Any:
         """Create a new worksheet.
 
         Args:
@@ -237,7 +221,7 @@ class ExcelService(BaseService):
     def write_data(
         self,
         sheet_name: str,
-        data: Union[pd.DataFrame, list, dict],
+        data: pd.DataFrame | list | dict,
         start_row: int = 1,
         start_col: int = 1,
         headers: bool = True,
@@ -288,7 +272,7 @@ class ExcelService(BaseService):
             sheet.range((start_row, start_col)).value = data
         else:
             for row_idx, row_data in enumerate(data, start=start_row):
-                if isinstance(row_data, (list, tuple)):
+                if isinstance(row_data, list | tuple):
                     for col_idx, value in enumerate(row_data, start=start_col):
                         sheet.cell(row=row_idx, column=col_idx, value=value)
                 else:
@@ -305,8 +289,8 @@ class ExcelService(BaseService):
                 sheet.cell(row=row_idx, column=start_col + 1, value=value)
 
     def read_data(
-        self, sheet_name: str, range_str: Optional[str] = None, as_dataframe: bool = True
-    ) -> Union[pd.DataFrame, list]:
+        self, sheet_name: str, range_str: str | None = None, as_dataframe: bool = True
+    ) -> pd.DataFrame | list:
         """Read data from a worksheet.
 
         Args:
@@ -320,10 +304,7 @@ class ExcelService(BaseService):
         sheet = self.get_sheet(sheet_name)
 
         if self.use_xlwings:
-            if range_str:
-                data = sheet.range(range_str).value
-            else:
-                data = sheet.used_range.value
+            data = sheet.range(range_str).value if range_str else sheet.used_range.value
         else:
             data = []
             if range_str:

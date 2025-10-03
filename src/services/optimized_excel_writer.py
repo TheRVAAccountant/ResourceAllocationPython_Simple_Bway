@@ -1,19 +1,14 @@
 """Optimized Excel writing service with bulk operations and buffering."""
 
-import threading
-import time
 from contextlib import contextmanager
 from datetime import date, datetime
-from pathlib import Path
 from queue import Queue
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 from loguru import logger
-from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.worksheet.worksheet import Worksheet
 
 from src.core.base_service import BaseService
@@ -31,7 +26,7 @@ class OptimizedExcelWriter(BaseService):
     6. Async write support for GUI responsiveness
     """
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """Initialize the optimized Excel writer.
 
         Args:
@@ -138,7 +133,7 @@ class OptimizedExcelWriter(BaseService):
         df: pd.DataFrame,
         start_row: int = 1,
         include_header: bool = True,
-        progress_callback: Optional[callable] = None,
+        progress_callback: callable | None = None,
     ) -> int:
         """Write DataFrame to worksheet using optimized bulk operations.
 
@@ -155,10 +150,7 @@ class OptimizedExcelWriter(BaseService):
         logger.info(f"Writing {len(df)} rows to worksheet using bulk operations")
 
         # Convert DataFrame to list of lists for faster writing
-        if include_header:
-            data = [df.columns.tolist()] + df.values.tolist()
-        else:
-            data = df.values.tolist()
+        data = [df.columns.tolist()] + df.values.tolist() if include_header else df.values.tolist()
 
         # Write in chunks
         total_rows = len(data)
@@ -180,7 +172,7 @@ class OptimizedExcelWriter(BaseService):
         logger.info(f"Successfully wrote {rows_written} rows")
         return rows_written
 
-    def _write_chunk(self, worksheet: Worksheet, data: List[List], start_row: int):
+    def _write_chunk(self, worksheet: Worksheet, data: list[list], start_row: int):
         """Write a chunk of data to worksheet efficiently."""
         for row_idx, row_data in enumerate(data, start=start_row):
             for col_idx, value in enumerate(row_data, start=1):
@@ -190,8 +182,8 @@ class OptimizedExcelWriter(BaseService):
     def apply_bulk_formatting(
         self,
         worksheet: Worksheet,
-        format_rules: List[Dict[str, Any]],
-        progress_callback: Optional[callable] = None,
+        format_rules: list[dict[str, Any]],
+        progress_callback: callable | None = None,
     ):
         """Apply formatting rules in bulk for better performance.
 
@@ -214,7 +206,7 @@ class OptimizedExcelWriter(BaseService):
 
         logger.info("Bulk formatting complete")
 
-    def _apply_format_rule(self, worksheet: Worksheet, rule: Dict[str, Any]):
+    def _apply_format_rule(self, worksheet: Worksheet, rule: dict[str, Any]):
         """Apply a single format rule to a range."""
         # Parse range
         if isinstance(rule["range"], str):
@@ -243,8 +235,8 @@ class OptimizedExcelWriter(BaseService):
     def create_thick_borders_optimized(
         self,
         worksheet: Worksheet,
-        date_sections: Dict[date, Tuple[int, int]],
-        progress_callback: Optional[callable] = None,
+        date_sections: dict[date, tuple[int, int]],
+        progress_callback: callable | None = None,
     ):
         """Apply thick borders to date sections using optimized approach.
 
@@ -258,7 +250,7 @@ class OptimizedExcelWriter(BaseService):
         # Pre-calculate all border rules
         format_rules = []
 
-        for section_idx, (section_date, (first_row, last_row)) in enumerate(date_sections.items()):
+        for section_idx, (_section_date, (first_row, last_row)) in enumerate(date_sections.items()):
             # Calculate borders for this section
             for row in range(first_row, last_row + 1):
                 for col in range(1, 25):  # Daily Details has 24 columns
@@ -312,9 +304,9 @@ class OptimizedExcelWriter(BaseService):
         self,
         worksheet: Worksheet,
         unassigned_df: pd.DataFrame,
-        vehicle_log_dict: Dict[str, Dict],
+        vehicle_log_dict: dict[str, dict],
         allocation_date: date,
-        progress_callback: Optional[callable] = None,
+        progress_callback: callable | None = None,
     ) -> int:
         """Write unassigned vehicles using optimized approach.
 
@@ -376,7 +368,6 @@ class OptimizedExcelWriter(BaseService):
         ]
 
         # Write all data at once
-        all_data = [headers] + data_rows
         rows_written = self.write_dataframe_optimized(
             worksheet,
             pd.DataFrame(data_rows, columns=headers),
@@ -429,11 +420,11 @@ class BulkWriter:
         self.pending_writes = []
         self.pending_formats = []
 
-    def write_rows(self, data: List[List], start_row: int = 1):
+    def write_rows(self, data: list[list], start_row: int = 1):
         """Queue rows for bulk writing."""
         self.pending_writes.append((data, start_row))
 
-    def apply_formatting(self, format_rules: List[Dict]):
+    def apply_formatting(self, format_rules: list[dict]):
         """Queue formatting rules."""
         self.pending_formats.extend(format_rules)
 

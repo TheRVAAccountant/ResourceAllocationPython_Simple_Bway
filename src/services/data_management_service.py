@@ -12,7 +12,6 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Optional
 
 import pandas as pd
 from loguru import logger
@@ -32,7 +31,7 @@ class DataManagementService:
         self._cache: dict[str, _CacheEntry] = {}
 
     # ---------- Path resolution ----------
-    def resolve_daily_summary_path(self, explicit_path: Optional[str] = None) -> Optional[str]:
+    def resolve_daily_summary_path(self, explicit_path: str | None = None) -> str | None:
         """Resolve a usable Daily Summary Log path.
 
         Priority: explicit -> config/settings.json default (if enabled) -> inputs/Daily Summary Log 2025.xlsx
@@ -45,7 +44,7 @@ class DataManagementService:
         settings_path = Path("config/settings.json")
         try:
             if settings_path.exists():
-                with open(settings_path, "r", encoding="utf-8") as f:
+                with open(settings_path, encoding="utf-8") as f:
                     data = json.load(f)
                 if data.get("use_default_daily_summary"):
                     path = data.get("default_daily_summary_path", "")
@@ -60,7 +59,7 @@ class DataManagementService:
         return None
 
     # ---------- Readers ----------
-    def load_vehicle_status(self, daily_summary_path: Optional[str]) -> Optional[pd.DataFrame]:
+    def load_vehicle_status(self, daily_summary_path: str | None) -> pd.DataFrame | None:
         """Load Vehicle Status sheet as DataFrame (raw columns).
 
         Returns None on failure. Short-lived cache keyed by file path.
@@ -83,7 +82,7 @@ class DataManagementService:
             logger.debug(f"Failed to read Vehicle Status from {path}: {e}")
             return None
 
-    def load_vehicle_log(self, daily_summary_path: Optional[str]) -> Optional[pd.DataFrame]:
+    def load_vehicle_log(self, daily_summary_path: str | None) -> pd.DataFrame | None:
         """Load Vehicle Log sheet as DataFrame (if present)."""
         path = self.resolve_daily_summary_path(daily_summary_path)
         if not path:

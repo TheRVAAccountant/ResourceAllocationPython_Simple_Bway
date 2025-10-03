@@ -2,10 +2,9 @@
 
 import hashlib
 import json
-import pickle
-from datetime import datetime, timedelta
+from contextlib import suppress
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 from cachetools import LRUCache, TTLCache
 from diskcache import Cache
@@ -21,7 +20,7 @@ class CachingService(BaseService):
     for improved performance.
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the caching service.
 
         Args:
@@ -79,10 +78,8 @@ class CachingService(BaseService):
     def cleanup(self) -> None:
         """Clean up caching resources."""
         if self.disk_cache:
-            try:
+            with suppress(Exception):
                 self.disk_cache.close()
-            except:
-                pass
 
         self.memory_cache.clear()
         self.permanent_cache.clear()
@@ -157,7 +154,7 @@ class CachingService(BaseService):
         return default
 
     @timer
-    def set(self, key: str, value: Any, ttl: Optional[int] = None, permanent: bool = False) -> bool:
+    def set(self, key: str, value: Any, ttl: int | None = None, permanent: bool = False) -> bool:
         """Set value in cache.
 
         Args:
@@ -231,7 +228,7 @@ class CachingService(BaseService):
 
         return deleted
 
-    def clear(self, pattern: Optional[str] = None) -> int:
+    def clear(self, pattern: str | None = None) -> int:
         """Clear cache entries.
 
         Args:
@@ -306,7 +303,7 @@ class CachingService(BaseService):
         self.writes = 0
         logger.info("Cache statistics reset")
 
-    def cache_decorator(self, prefix: str, ttl: Optional[int] = None, permanent: bool = False):
+    def cache_decorator(self, prefix: str, ttl: int | None = None, permanent: bool = False):
         """Decorator for caching function results.
 
         Args:

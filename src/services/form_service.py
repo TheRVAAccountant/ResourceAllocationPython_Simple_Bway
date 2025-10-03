@@ -1,8 +1,7 @@
 """Form service for Excel-based data entry."""
 
-from datetime import date, datetime
-from pathlib import Path
-from typing import Any, Optional, Union
+from datetime import datetime
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -25,9 +24,9 @@ class FormField:
         field_type: str,
         required: bool = False,
         default: Any = None,
-        validation: Optional[ExcelValidation] = None,
-        options: Optional[list] = None,
-        help_text: Optional[str] = None,
+        validation: ExcelValidation | None = None,
+        options: list | None = None,
+        help_text: str | None = None,
     ):
         """Initialize form field.
 
@@ -55,7 +54,7 @@ class FormField:
 class ExcelForm:
     """Represents an Excel-based form."""
 
-    def __init__(self, form_id: str, title: str, description: Optional[str] = None):
+    def __init__(self, form_id: str, title: str, description: str | None = None):
         """Initialize Excel form.
 
         Args:
@@ -79,7 +78,7 @@ class ExcelForm:
         """
         self.fields.append(field)
 
-    def get_field(self, name: str) -> Optional[FormField]:
+    def get_field(self, name: str) -> FormField | None:
         """Get field by name.
 
         Args:
@@ -101,7 +100,7 @@ class FormService(BaseService):
     in Excel with validation and submission handling.
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the form service.
 
         Args:
@@ -380,7 +379,7 @@ class FormService(BaseService):
 
     @timer
     @error_handler
-    def read_form_submission(self, file_path: str, form_id: str) -> Optional[dict]:
+    def read_form_submission(self, file_path: str, form_id: str) -> dict | None:
         """Read form submission from Excel file.
 
         Args:
@@ -471,19 +470,20 @@ class FormService(BaseService):
                 if field.field_type == "number":
                     try:
                         float(value)
-                    except:
+                    except (TypeError, ValueError):
                         errors.append(f"{field.label} must be a number")
 
                 elif field.field_type == "date":
                     try:
                         if isinstance(value, str):
                             datetime.strptime(value, "%Y-%m-%d")
-                    except:
+                    except (TypeError, ValueError):
                         errors.append(f"{field.label} must be a valid date")
 
-                elif field.field_type == "dropdown" and field.options:
-                    if value not in field.options:
-                        errors.append(f"{field.label} must be one of: {', '.join(field.options)}")
+                elif (
+                    field.field_type == "dropdown" and field.options and value not in field.options
+                ):
+                    errors.append(f"{field.label} must be one of: {', '.join(field.options)}")
 
         return errors
 
@@ -496,7 +496,7 @@ class FormService(BaseService):
         self.forms[form.form_id] = form
         logger.info(f"Form added: {form.form_id}")
 
-    def get_form(self, form_id: str) -> Optional[ExcelForm]:
+    def get_form(self, form_id: str) -> ExcelForm | None:
         """Get form by ID.
 
         Args:
@@ -507,7 +507,7 @@ class FormService(BaseService):
         """
         return self.forms.get(form_id)
 
-    def get_submissions(self, form_id: Optional[str] = None) -> list[dict]:
+    def get_submissions(self, form_id: str | None = None) -> list[dict]:
         """Get form submissions.
 
         Args:
@@ -520,7 +520,7 @@ class FormService(BaseService):
             return [s for s in self.submissions if s.get("form_id") == form_id]
         return self.submissions
 
-    def export_submissions(self, output_path: str, form_id: Optional[str] = None) -> bool:
+    def export_submissions(self, output_path: str, form_id: str | None = None) -> bool:
         """Export submissions to Excel.
 
         Args:

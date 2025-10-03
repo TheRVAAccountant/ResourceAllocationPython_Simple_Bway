@@ -3,13 +3,9 @@ Monitoring dashboard tab for the Resource Management System GUI.
 Provides real-time monitoring, alerts, and performance metrics visualization.
 """
 
-import asyncio
-import json
-import tkinter as tk
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
-from typing import Any, Dict, List, Optional
 
 import customtkinter as ctk
 
@@ -534,11 +530,7 @@ class MonitoringTab(ctk.CTkFrame):
 
             for key, (value, unit) in metrics.items():
                 if key in self.business_items:
-                    if isinstance(value, float):
-                        display_value = f"{value:.1f}"
-                    else:
-                        display_value = str(value)
-
+                    display_value = f"{value:.1f}" if isinstance(value, float) else str(value)
                     self.business_items[key].configure(text=f"{display_value} {unit}")
 
         except Exception as e:

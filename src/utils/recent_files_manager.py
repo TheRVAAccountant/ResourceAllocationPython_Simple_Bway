@@ -1,12 +1,13 @@
 """Recent Files Manager for tracking and persisting recently used files."""
 
+from __future__ import annotations
+
 import json
-import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -27,9 +28,9 @@ class RecentFileInfo:
 
     path: str
     last_used: str
-    file_size: Optional[int] = None
+    file_size: int | None = None
     exists: bool = True
-    display_name: Optional[str] = None
+    display_name: str | None = None
     use_count: int = 1
 
     def to_dict(self) -> dict:
@@ -37,7 +38,7 @@ class RecentFileInfo:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "RecentFileInfo":
+    def from_dict(cls, data: dict[str, Any]) -> RecentFileInfo:
         """Create from dictionary."""
         return cls(**data)
 
@@ -45,7 +46,7 @@ class RecentFileInfo:
 class RecentFilesManager:
     """Manages recent files for each field type."""
 
-    def __init__(self, config_dir: Path = None):
+    def __init__(self, config_dir: Path | None = None):
         """Initialize the recent files manager.
 
         Args:
@@ -66,13 +67,13 @@ class RecentFilesManager:
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
         # Load existing data
-        self._data = self._load_data()
+        self._data: dict[str, Any] = self._load_data()
 
         # Cleanup on initialization
         self.cleanup_old_entries()
         self.cleanup_missing_files()
 
-    def _load_data(self) -> Dict[str, Any]:
+    def _load_data(self) -> dict[str, Any]:
         """Load recent files data from JSON file."""
         if not self.config_file.exists():
             # Return default structure
@@ -90,8 +91,8 @@ class RecentFilesManager:
             }
 
         try:
-            with open(self.config_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            with open(self.config_file, encoding="utf-8") as file_handle:
+                data = json.load(file_handle)
 
             # Apply settings
             if "settings" in data:
@@ -108,7 +109,7 @@ class RecentFilesManager:
 
             return data
 
-        except (json.JSONDecodeError, IOError) as e:
+        except (json.JSONDecodeError, OSError) as e:
             logger.warning(f"Failed to load recent files: {e}")
             return self._load_data()  # Return default structure
 
@@ -124,13 +125,13 @@ class RecentFilesManager:
 
             # Write to temporary file first
             temp_file = self.config_file.with_suffix(".tmp")
-            with open(temp_file, "w", encoding="utf-8") as f:
-                json.dump(self._data, f, indent=2, ensure_ascii=False)
+            with open(temp_file, "w", encoding="utf-8") as file_handle:
+                json.dump(self._data, file_handle, indent=2, ensure_ascii=False)
 
             # Atomic rename
             temp_file.replace(self.config_file)
 
-        except IOError as e:
+        except OSError as e:
             logger.error(f"Failed to save recent files: {e}")
 
     def add_recent_file(self, field_type: FileFieldType, file_path: str):
@@ -158,7 +159,7 @@ class RecentFilesManager:
             path_obj = Path(file_path)
             file_size = path_obj.stat().st_size if path_obj.exists() else None
             exists = path_obj.exists()
-        except:
+        except Exception:
             file_size = None
             exists = False
 
@@ -193,7 +194,7 @@ class RecentFilesManager:
 
         logger.debug(f"Added recent file: {file_path} to {field_type.name}")
 
-    def get_recent_files(self, field_type: FileFieldType) -> List[RecentFileInfo]:
+    def get_recent_files(self, field_type: FileFieldType) -> list[RecentFileInfo]:
         """Get recent files for specific field type.
 
         Args:
@@ -223,7 +224,7 @@ class RecentFilesManager:
                 last_used = datetime.fromisoformat(info.last_used)
                 days_ago = (datetime.now() - last_used).days
                 recency_score = max(0, 1 - (days_ago / 30))  # Linear decay over 30 days
-            except:
+            except Exception:
                 recency_score = 0
 
             # Calculate frequency score (normalized)
@@ -308,14 +309,14 @@ class RecentFilesManager:
                         filtered_files.append(file_info)
                     else:
                         removed_count += 1
-                except:
+                except Exception as e:
+                    logger.debug(f"Failed to parse date: {e}")
                     filtered_files.append(file_info)  # Keep if date parsing fails
 
             self._data[field_key] = filtered_files
 
         if removed_count > 0:
             self._save_data()
-            logger.info(f"Cleaned up {removed_count} old entries")
 
     def get_display_path(self, file_path: str, max_length: int = 50) -> str:
         """Get intelligent display path for UI.

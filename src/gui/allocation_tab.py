@@ -5,15 +5,12 @@ import threading
 from datetime import date, datetime
 from pathlib import Path
 from tkinter import StringVar, filedialog, messagebox
-from typing import Optional
 
 import customtkinter as ctk
-import pandas as pd
 from loguru import logger
 
 from src.core.gas_compatible_allocator import GASCompatibleAllocator
 from src.gui.widgets import RecentFileSelector
-from src.models.allocation import AllocationRequest, Driver, Priority, Vehicle, VehicleType
 from src.utils.recent_files_manager import FileFieldType
 
 
@@ -343,7 +340,7 @@ class AllocationTab:
         if not settings_path.exists():
             return
         try:
-            with open(settings_path, "r", encoding="utf-8") as f:
+            with open(settings_path, encoding="utf-8") as f:
                 data = json.load(f)
         except Exception as e:
             logger.debug(f"Unable to read settings.json: {e}")
@@ -366,7 +363,7 @@ class AllocationTab:
         if not settings_path.exists():
             return
         try:
-            with open(settings_path, "r", encoding="utf-8") as f:
+            with open(settings_path, encoding="utf-8") as f:
                 data = json.load(f)
             auto_open = bool(data.get("auto_open_results", False))
             if auto_open:
@@ -472,7 +469,7 @@ class AllocationTab:
 
             # Create output - write back to Daily Summary Log
             output_file = self.daily_summary_path.get()
-            self.update_results(f"Writing results back to Daily Summary Log...\n")
+            self.update_results("Writing results back to Daily Summary Log...\n")
             self.update_results(
                 "Adding/updating: Daily Details, Results, and Unassigned sheets...\n"
             )
@@ -598,7 +595,7 @@ class AllocationTab:
             [r for r in allocator.allocation_results if r.get("Validation Status") == "DUPLICATE"]
         )
 
-        text += f"SUMMARY:\n"
+        text += "SUMMARY:\n"
         text += f"  • Total BWAY Routes: {total_routes}\n"
         text += f"  • Routes with Vehicles: {assigned_routes}\n"
         text += f"  • Routes without Vehicles: {unassigned_routes}\n"
@@ -609,7 +606,7 @@ class AllocationTab:
         if duplicate_count > 0:
             text += f"  • ⚠️ Duplicate Assignments: {duplicate_count} (marked for review)\n"
         else:
-            text += f"  • ✅ Validation Status: No duplicates detected\n"
+            text += "  • ✅ Validation Status: No duplicates detected\n"
 
         text += "\n"
 
@@ -620,7 +617,7 @@ class AllocationTab:
                 route = result.get("Route Code", "Unknown")
                 van_id = result.get("Van ID", "UNASSIGNED")
                 driver = result.get("Driver Name", "No Driver")
-                service = result.get("Service Type", "Unknown")
+                _service = result.get("Service Type", "Unknown")
                 validation_status = result.get("Validation Status", "OK")
 
                 # Add warning indicator for duplicates
@@ -638,20 +635,20 @@ class AllocationTab:
         ):
             text += f"\nUNASSIGNED VEHICLES ({len(allocator.unassigned_vehicles)}):\n"
             # Iterate through DataFrame rows
-            for idx, vehicle in allocator.unassigned_vehicles.head(10).iterrows():
+            for _idx, vehicle in allocator.unassigned_vehicles.head(10).iterrows():
                 van_id = vehicle.get("Van ID", "Unknown")
                 van_type = vehicle.get("Type", "Unknown")
                 text += f"  • {van_id} ({van_type})\n"
             if len(allocator.unassigned_vehicles) > 10:
                 text += f"  ... and {len(allocator.unassigned_vehicles) - 10} more\n"
 
-        text += f"\nFILES UPDATED:\n"
-        text += f"  • Daily Summary Log: Daily Details sheet updated\n"
+        text += "\nFILES UPDATED:\n"
+        text += "  • Daily Summary Log: Daily Details sheet updated\n"
         if hasattr(self, "results_file_path"):
             text += f"  • Results File: {self.results_file_path}\n"
-            text += f"    - Contains 'Results' and 'Unassigned Vehicles' sheets\n"
+            text += "    - Contains 'Results' and 'Unassigned Vehicles' sheets\n"
 
-        text += f"\n✅ Allocation completed successfully!\n"
+        text += "\n✅ Allocation completed successfully!\n"
 
         self.update_results(text)
 
@@ -964,7 +961,7 @@ class AllocationTab:
                     )
 
             if duplicate_routes:
-                content += f"Route Code    | Van ID  | Driver Name           | Service Type\n"
+                content += "Route Code    | Van ID  | Driver Name           | Service Type\n"
                 content += "-" * 70 + "\n"
                 for route_info in duplicate_routes[:20]:  # Show first 20
                     content += f"{route_info['route']:12s} | {route_info['van']:7s} | {route_info['driver']:20s} | {route_info['service']}\n"

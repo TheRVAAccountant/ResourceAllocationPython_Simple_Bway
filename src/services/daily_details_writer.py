@@ -1,12 +1,11 @@
 """Daily Details writer service for GAS-compatible output."""
 
-from datetime import date, datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from datetime import date
+from typing import Any
 
 import pandas as pd
 from loguru import logger
-from openpyxl import Workbook, load_workbook
+from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
@@ -105,8 +104,8 @@ class DailyDetailsWriter(BaseService):
 
         # Validate dependencies
         try:
-            import openpyxl
-            import pandas
+            import openpyxl  # noqa: F401
+            import pandas  # noqa: F401
         except ImportError as e:
             logger.error(f"Missing required dependency: {e}")
             raise
@@ -142,7 +141,7 @@ class DailyDetailsWriter(BaseService):
         file_path: str,
         allocation_result: AllocationResult,
         allocation_date: date,
-        vehicle_log_dict: Optional[Dict] = None,
+        vehicle_log_dict: dict | None = None,
         skip_results_sheet: bool = True,
     ) -> bool:
         """Append allocation results to an existing Daily Summary Log file.
@@ -381,7 +380,7 @@ class DailyDetailsWriter(BaseService):
         date_str = allocation_date.strftime("%m/%d/%Y")
         return f"{date_str}|{route}|{device}|{van_id}"
 
-    def _normalize_brand_label(self, value: Any) -> Optional[str]:
+    def _normalize_brand_label(self, value: Any) -> str | None:
         """Normalize raw brand/rental values to simplified labels."""
         if value is None:
             return None
@@ -419,9 +418,9 @@ class DailyDetailsWriter(BaseService):
         self,
         allocation_result: AllocationResult,
         allocation_date: date,
-        vehicle_log_dict: Optional[Dict] = None,
-        existing_ids: Optional[set] = None,
-    ) -> List[List[Any]]:
+        vehicle_log_dict: dict | None = None,
+        existing_ids: set | None = None,
+    ) -> list[list[Any]]:
         """Prepare allocation data rows for Daily Details sheet.
 
         Args:
@@ -519,7 +518,7 @@ class DailyDetailsWriter(BaseService):
         else:
             # Fallback to basic allocation data (for non-GAS allocators)
             for driver_id, vehicles in allocation_result.allocations.items():
-                for idx, vehicle_id in enumerate(vehicles):
+                for _index, vehicle_id in enumerate(vehicles):
                     # Generate synthetic route code as fallback
                     route_code = f"R{len(rows)+1:03d}"
 
@@ -703,7 +702,7 @@ class DailyDetailsWriter(BaseService):
         logger.info(f"Created Results sheet '{sheet_name}' with {row_num-2} rows")
 
     def _create_unassigned_sheet(
-        self, workbook, sheet_name: str, allocation_result: AllocationResult, allocation_date: date
+        self, workbook, sheet_name: str, allocation_result: AllocationResult, _allocation_date: date
     ):
         """Create an Unassigned Vans sheet.
 

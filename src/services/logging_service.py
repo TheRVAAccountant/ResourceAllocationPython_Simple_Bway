@@ -1,11 +1,10 @@
 """Logging service for application-wide logging."""
 
-import logging
 import sys
+from contextlib import suppress
 from datetime import datetime
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -19,7 +18,7 @@ class LoggingService(BaseService):
     log rotation, and filtering capabilities.
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the logging service.
 
         Args:
@@ -81,10 +80,8 @@ class LoggingService(BaseService):
         """Clean up logging resources."""
         # Remove all added handlers
         for handler_id in self.handlers:
-            try:
+            with suppress(Exception):
                 logger.remove(handler_id)
-            except:
-                pass
 
         super().cleanup()
 
@@ -267,7 +264,7 @@ class LoggingService(BaseService):
         """
         return self.log_file
 
-    def get_recent_logs(self, lines: int = 100, level: Optional[str] = None) -> list[str]:
+    def get_recent_logs(self, lines: int = 100, level: str | None = None) -> list[str]:
         """Get recent log entries.
 
         Args:
@@ -329,7 +326,7 @@ class LoggingService(BaseService):
             logger.error(f"Failed to clear logs: {e}")
             return False
 
-    def archive_logs(self, archive_path: Optional[Path] = None) -> bool:
+    def archive_logs(self, archive_path: Path | None = None) -> bool:
         """Archive current logs.
 
         Args:

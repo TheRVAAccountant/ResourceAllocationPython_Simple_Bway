@@ -11,7 +11,6 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Optional
 
 import pandas as pd
 from loguru import logger
@@ -41,7 +40,7 @@ class DashboardDataService:
         self._drv_cache: dict[str, _CacheEntry] = {}
 
     # ---------- Path resolution ----------
-    def resolve_daily_summary_path(self, explicit_path: Optional[str] = None) -> Optional[str]:
+    def resolve_daily_summary_path(self, explicit_path: str | None = None) -> str | None:
         """Resolve a usable Daily Summary Log path."""
         # 1) Explicit
         if explicit_path:
@@ -53,7 +52,7 @@ class DashboardDataService:
         settings_path = Path("config/settings.json")
         try:
             if settings_path.exists():
-                with open(settings_path, "r", encoding="utf-8") as f:
+                with open(settings_path, encoding="utf-8") as f:
                     data = json.load(f)
                 if data.get("use_default_daily_summary"):
                     path = data.get("default_daily_summary_path", "")
@@ -70,7 +69,7 @@ class DashboardDataService:
         return None
 
     # ---------- Metrics readers ----------
-    def total_operational_vehicles(self, daily_summary_path: Optional[str]) -> Optional[int]:
+    def total_operational_vehicles(self, daily_summary_path: str | None) -> int | None:
         """Count operational vehicles from Vehicle Status sheet.
 
         Returns None on any issue (missing file/sheet/columns).
@@ -95,7 +94,6 @@ class DashboardDataService:
         # Column normalization
         cols = {c.lower().strip(): c for c in df.columns}
         van_col = cols.get("van id") or cols.get("vehicle id")
-        type_col = cols.get("type") or cols.get("vehicle type")
         op_col = cols.get("opnal? y/n") or cols.get("operational")
 
         if not (van_col and op_col):
@@ -114,7 +112,7 @@ class DashboardDataService:
         self._veh_cache[path] = _CacheEntry(value=count, timestamp=now)
         return count
 
-    def total_drivers(self, daily_routes_path: Optional[str]) -> Optional[int]:
+    def total_drivers(self, daily_routes_path: str | None) -> int | None:
         """Count distinct drivers from Daily Routes (Routes sheet)."""
         if not daily_routes_path:
             return None

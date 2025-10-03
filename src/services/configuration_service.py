@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import yaml
 from dotenv import load_dotenv
@@ -19,7 +19,7 @@ class ConfigurationService(BaseService):
     files, environment variables, and runtime updates.
     """
 
-    def __init__(self, config_file: Optional[str] = None):
+    def __init__(self, config_file: str | None = None):
         """Initialize the configuration service.
 
         Args:
@@ -285,7 +285,7 @@ class ConfigurationService(BaseService):
 
         return result
 
-    def save(self, file_path: Optional[str] = None):
+    def save(self, file_path: str | None = None):
         """Save configuration to file.
 
         Args:

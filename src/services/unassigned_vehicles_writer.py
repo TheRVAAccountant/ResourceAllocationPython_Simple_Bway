@@ -2,14 +2,13 @@
 
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 from loguru import logger
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.filters import AutoFilter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from src.core.base_service import BaseService
@@ -46,7 +45,7 @@ class UnassignedVehiclesWriter(BaseService):
         bottom=Side(style="thin"),
     )
 
-    def __init__(self, config: Optional[Dict] = None):
+    def __init__(self, config: dict | None = None):
         """Initialize the unassigned vehicles writer.
 
         Args:
@@ -91,12 +90,13 @@ class UnassignedVehiclesWriter(BaseService):
                 return False
 
             # If historical data path is set, verify it's a valid path string
-            if self.historical_data_path is not None:
-                if not isinstance(self.historical_data_path, str):
-                    logger.error(
-                        f"Invalid historical_data_path type: {type(self.historical_data_path)}"
-                    )
-                    return False
+            if self.historical_data_path is not None and not isinstance(
+                self.historical_data_path, str
+            ):
+                logger.error(
+                    f"Invalid historical_data_path type: {type(self.historical_data_path)}"
+                )
+                return False
 
             # Service is valid
             logger.debug("UnassignedVehiclesWriter validation successful")
@@ -110,9 +110,9 @@ class UnassignedVehiclesWriter(BaseService):
         self,
         workbook: Workbook,
         unassigned_vehicles: pd.DataFrame,
-        vehicle_log_dict: Dict[str, Dict],
+        vehicle_log_dict: dict[str, dict],
         allocation_date: date,
-        historical_assignments: Optional[pd.DataFrame] = None,
+        historical_assignments: pd.DataFrame | None = None,
     ) -> Worksheet:
         """
         Create or update unassigned vehicles sheet.
@@ -172,9 +172,9 @@ class UnassignedVehiclesWriter(BaseService):
         self,
         worksheet: Worksheet,
         unassigned_vehicles: pd.DataFrame,
-        vehicle_log_dict: Dict[str, Dict],
+        vehicle_log_dict: dict[str, dict],
         allocation_date: date,
-        historical_assignments: Optional[pd.DataFrame] = None,
+        historical_assignments: pd.DataFrame | None = None,
     ) -> None:
         """Write unassigned vehicle data to worksheet."""
         current_row = 2
@@ -221,9 +221,7 @@ class UnassignedVehiclesWriter(BaseService):
                     )
 
                 # Format specific columns
-                if col_idx == 5:  # Days Since Last Assignment
-                    cell.alignment = Alignment(horizontal="center")
-                elif col_idx in [10, 11]:  # Date and Time columns
+                if col_idx == 5 or col_idx in [10, 11]:  # Days Since Last Assignment
                     cell.alignment = Alignment(horizontal="center")
 
             current_row += 1
@@ -298,7 +296,7 @@ class UnassignedVehiclesWriter(BaseService):
             logger.warning(f"Error calculating days since assignment for {vehicle_id}: {e}")
             return 0
 
-    def create_unassigned_summary(self, unassigned_vehicles: pd.DataFrame) -> Dict[str, Any]:
+    def create_unassigned_summary(self, unassigned_vehicles: pd.DataFrame) -> dict[str, Any]:
         """
         Create a summary of unassigned vehicles.
 
@@ -341,7 +339,7 @@ class UnassignedVehiclesWriter(BaseService):
     def export_unassigned_to_csv(
         self,
         unassigned_vehicles: pd.DataFrame,
-        vehicle_log_dict: Dict[str, Dict],
+        vehicle_log_dict: dict[str, dict],
         output_path: str,
         allocation_date: date,
     ) -> None:

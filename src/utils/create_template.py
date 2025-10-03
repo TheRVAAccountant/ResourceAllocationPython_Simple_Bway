@@ -1,7 +1,6 @@
 """Create template Excel files matching Google Apps Script expectations."""
 
 from datetime import date, datetime
-from pathlib import Path
 
 import pandas as pd
 from openpyxl import Workbook

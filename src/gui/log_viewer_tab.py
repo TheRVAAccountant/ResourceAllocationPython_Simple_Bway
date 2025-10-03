@@ -5,7 +5,6 @@ import threading
 from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog
-from typing import Optional
 
 import customtkinter as ctk
 from loguru import logger
@@ -258,7 +257,7 @@ class LogViewerTab:
         # Schedule next check
         self.parent.after(100, self.process_log_queue)
 
-    def add_log_entry(self, level: str, entry: str):
+    def add_log_entry(self, _level: str, entry: str):
         """Add log entry to display.
 
         Args:
@@ -266,11 +265,10 @@ class LogViewerTab:
             entry: Log entry text.
         """
         # Add timestamp if enabled
-        if not self.timestamps_checkbox.get():
+        if not self.timestamps_checkbox.get() and "] [" in entry:
             # Remove timestamp from entry
-            if "] [" in entry:
-                entry = entry.split("] [", 1)[1]
-                entry = "[" + entry
+            entry = entry.split("] [", 1)[1]
+            entry = "[" + entry
 
         # Add line number if enabled
         if self.line_numbers_checkbox.get():
@@ -294,29 +292,43 @@ class LogViewerTab:
         # Count logs by level
         text = self.log_text.get("1.0", "end")
         lines = text.split("\n")
-        total = len([l for l in lines if l.strip()])
-
-        debug_count = len([l for l in lines if "DEBUG" in l])
-        info_count = len([l for l in lines if "INFO" in l])
-        warning_count = len([l for l in lines if "WARNING" in l])
-        error_count = len([l for l in lines if "ERROR" in l])
+        total = len([line for line in lines if line.strip()])
+        debug_count = len([line for line in lines if "DEBUG" in line])
+        info_count = len([line for line in lines if "INFO" in line])
+        warning_count = len([line for line in lines if "WARNING" in line])
+        error_count = len([line for line in lines if "ERROR" in line])
 
         self.log_count_label.configure(text=f"Total: {total} logs")
         self.level_counts_label.configure(
-            text=f"DEBUG: {debug_count} | INFO: {info_count} | WARNING: {warning_count} | ERROR: {error_count}"
+            text=(
+                f"DEBUG: {debug_count} | INFO: {info_count} | "
+                f"WARNING: {warning_count} | ERROR: {error_count}"
+            )
         )
         self.last_update_label.configure(text=f"Last update: {datetime.now().strftime('%H:%M:%S')}")
+
+        self.level_filters["DEBUG"].configure(
+            command=lambda level_name="DEBUG": self.filter_logs(level_name)
+        )
+        self.level_filters["INFO"].configure(
+            command=lambda level_name="INFO": self.filter_logs(level_name)
+        )
+        self.level_filters["WARNING"].configure(
+            command=lambda level_name="WARNING": self.filter_logs(level_name)
+        )
+        self.level_filters["ERROR"].configure(
+            command=lambda level_name="ERROR": self.filter_logs(level_name)
+        )
 
     def filter_logs(self, level: str):
         """Filter logs by level.
 
         Args:
-            level: Log level to filter.
         """
         self.log_level_filter = level
         logger.info(f"Log filter set to: {level}")
 
-    def search_logs(self, event):
+    def search_logs(self, _event):
         """Search logs for text.
 
         Args:

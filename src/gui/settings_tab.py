@@ -1,9 +1,10 @@
 """Settings tab for Resource Allocation GUI."""
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from tkinter import filedialog, messagebox
-from typing import Any, Callable, Optional
+from typing import Any
 
 import customtkinter as ctk
 from loguru import logger
@@ -17,7 +18,7 @@ class SettingsTab:
         parent,
         allocation_engine,
         excel_service,
-        on_settings_saved: Optional[Callable[[dict], None]] = None,
+        on_settings_saved: Callable[[dict], None] | None = None,
     ):
         """Initialize settings tab.
 
@@ -749,14 +750,12 @@ class SettingsTab:
             widget_type: Type of widget.
         """
 
-        def on_change(*args):
+        def on_change(*_args):
             self.unsaved_changes = True
             self.save_button.configure(text="💾 Save Settings*")
 
         # Add appropriate binding based on widget type
-        if widget_type == "checkbox":
-            widget.configure(command=on_change)
-        elif widget_type in ["combo", "slider"]:
+        if widget_type == "checkbox" or widget_type in ["combo", "slider"]:
             widget.configure(command=on_change)
         elif widget_type == "text":
             widget.bind("<KeyRelease>", on_change)
@@ -807,10 +806,7 @@ class SettingsTab:
             entry: Entry widget to update.
             is_file: True for file, False for directory.
         """
-        if is_file:
-            path = filedialog.askopenfilename()
-        else:
-            path = filedialog.askdirectory()
+        path = filedialog.askopenfilename() if is_file else filedialog.askdirectory()
 
         if path:
             entry.delete(0, "end")
@@ -840,9 +836,7 @@ class SettingsTab:
             # Determine raw value by widget capabilities
             raw = None
             try:
-                if hasattr(widget, "get"):
-                    raw = widget.get()
-                elif hasattr(widget, "get"):
+                if hasattr(widget, "get") or hasattr(widget, "get"):
                     raw = widget.get()
             except Exception:
                 raw = None
@@ -858,9 +852,7 @@ class SettingsTab:
                     raw = float(widget.get())
                 elif isinstance(widget, _ctk.CTkTextbox):
                     raw = widget.get("1.0", "end").strip()
-                elif isinstance(widget, _ctk.CTkEntry):
-                    raw = widget.get()
-                elif isinstance(widget, _ctk.CTkComboBox):
+                elif isinstance(widget, _ctk.CTkEntry | _ctk.CTkComboBox):
                     raw = widget.get()
             except Exception:
                 pass
@@ -898,13 +890,12 @@ class SettingsTab:
             path = self.settings.get("default_daily_summary_path", "")
             if path:
                 p = Path(path)
-                if not p.exists():
-                    if not messagebox.askyesno(
-                        "Path Not Found",
-                        "The configured Default Daily Summary Log path does not exist.\n"
-                        "Do you want to save it anyway?",
-                    ):
-                        return  # Abort save
+                if not p.exists() and not messagebox.askyesno(
+                    "Path Not Found",
+                    "The configured Default Daily Summary Log path does not exist.\n"
+                    "Do you want to save it anyway?",
+                ):
+                    return  # Abort save
         except Exception:
             pass
 

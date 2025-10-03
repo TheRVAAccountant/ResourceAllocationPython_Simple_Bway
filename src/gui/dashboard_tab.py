@@ -1,8 +1,8 @@
 """Dashboard tab for Resource Allocation GUI."""
 
 import threading
-from datetime import datetime, timedelta
-from typing import Callable, Optional
+from collections.abc import Callable
+from datetime import datetime
 
 import customtkinter as ctk
 from loguru import logger
@@ -65,7 +65,7 @@ class DashboardTab:
         parent,
         allocation_engine,
         dashboard_data_service=None,
-        daily_summary_path_getter: Optional[Callable[[], Optional[str]]] = None,
+        daily_summary_path_getter: Callable[[], str | None] | None = None,
     ):
         """Initialize dashboard tab.
 
@@ -77,7 +77,7 @@ class DashboardTab:
         self.allocation_engine = allocation_engine
         self.dashboard_data_service = dashboard_data_service
         self._daily_summary_path_getter = daily_summary_path_getter
-        self._daily_routes_path_getter: Optional[Callable[[], Optional[str]]] = None
+        self._daily_routes_path_getter: Callable[[], str | None] | None = None
 
         # Configure grid
         self.parent.grid_columnconfigure(0, weight=1)
@@ -89,11 +89,11 @@ class DashboardTab:
         # Load initial data
         self.update_metrics()
 
-    def set_daily_summary_path_getter(self, getter: Callable[[], Optional[str]]):
+    def set_daily_summary_path_getter(self, getter: Callable[[], str | None]):
         """Wire a callable that returns the selected Daily Summary path."""
         self._daily_summary_path_getter = getter
 
-    def _resolve_daily_summary_path(self) -> Optional[str]:
+    def _resolve_daily_summary_path(self) -> str | None:
         """Resolve Daily Summary path from getter or service defaults."""
         try:
             if self._daily_summary_path_getter:
@@ -106,11 +106,11 @@ class DashboardTab:
             return self.dashboard_data_service.resolve_daily_summary_path(None)
         return None
 
-    def set_daily_routes_path_getter(self, getter: Callable[[], Optional[str]]):
+    def set_daily_routes_path_getter(self, getter: Callable[[], str | None]):
         """Wire a callable that returns the selected Daily Routes path."""
         self._daily_routes_path_getter = getter
 
-    def _resolve_daily_routes_path(self) -> Optional[str]:
+    def _resolve_daily_routes_path(self) -> str | None:
         try:
             if self._daily_routes_path_getter:
                 path = self._daily_routes_path_getter()

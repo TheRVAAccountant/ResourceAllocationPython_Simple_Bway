@@ -1,7 +1,6 @@
 """Window management utilities for bringing GUI to front across platforms."""
 
 import platform
-import sys
 
 from loguru import logger
 
@@ -45,9 +44,6 @@ class WindowManager:
             # Use osascript to activate the application
             import os
             import subprocess
-
-            # Get the process name
-            process_name = "Python"  # Default for Python apps
 
             # Try to activate using AppleScript
             script = f"""

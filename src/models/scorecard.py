@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(slots=True)
 class ScorecardMetadata:
     """High-level metadata extracted from a scorecard PDF."""
 
-    station: Optional[str]
-    dsp_name: Optional[str]
-    week_number: Optional[int]
-    year: Optional[int]
+    station: str | None
+    dsp_name: str | None
+    week_number: int | None
+    year: int | None
 
 
 @dataclass(slots=True)
@@ -24,19 +23,19 @@ class DAWeeklyPerformance:
     name: str
     transporter_id: str
     overall_tier: str
-    delivered: Optional[int]
-    key_focus_area: Optional[str]
-    fico_score: Optional[str]
-    seatbelt_off_rate: Optional[float]
-    speeding_event_rate: Optional[float]
-    distractions_rate: Optional[float]
-    following_distance_rate: Optional[float]
-    sign_signal_violations: Optional[float]
-    cdf_dpmo: Optional[float]
-    ced_dpmo: Optional[float]
-    dcr_percent: Optional[float]
-    dsb_count: Optional[float]
-    pod_percent: Optional[float]
-    psb_status: Optional[str]
-    dsb_events: Optional[int]
-    pod_opportunities: Optional[int]
+    delivered: int | None
+    key_focus_area: str | None
+    fico_score: str | None
+    seatbelt_off_rate: float | None
+    speeding_event_rate: float | None
+    distractions_rate: float | None
+    following_distance_rate: float | None
+    sign_signal_violations: float | None
+    cdf_dpmo: float | None
+    ced_dpmo: float | None
+    dcr_percent: float | None
+    dsb_count: float | None
+    pod_percent: float | None
+    psb_status: str | None
+    dsb_events: int | None
+    pod_opportunities: int | None

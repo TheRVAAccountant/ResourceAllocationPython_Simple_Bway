@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import List, Optional
 
 
 @dataclass(slots=True)
@@ -14,13 +13,13 @@ class AssociateRecord:
     name: str
     transporter_id: str
     position: str
-    qualifications: List[str]
-    id_expiration: Optional[date]
+    qualifications: list[str]
+    id_expiration: date | None
     personal_phone: str
     work_phone: str
     email: str
     status: str
-    days_until_expiration: Optional[int]
+    days_until_expiration: int | None
     is_active: bool
     is_expired: bool
     is_expiring_soon: bool

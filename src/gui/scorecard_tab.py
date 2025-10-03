@@ -7,15 +7,13 @@ import os
 import platform
 from collections import Counter
 from dataclasses import asdict
-from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
-from typing import List, Optional
 
 import customtkinter as ctk
 from loguru import logger
 
 from src.gui.widgets.recent_file_selector import RecentFileSelector
-from src.models.scorecard import DAWeeklyPerformance, ScorecardMetadata
+from src.models.scorecard import DAWeeklyPerformance
 from src.services.scorecard_service import ScorecardData, ScorecardService
 from src.utils.recent_files_manager import FileFieldType
 
@@ -28,7 +26,7 @@ class ScorecardTab:
         parent: ctk.CTkFrame,
         *,
         scorecard_service: ScorecardService,
-        settings: Optional[dict] = None,
+        settings: dict | None = None,
     ) -> None:
         self.parent = parent
         self.parent.grid_columnconfigure(0, weight=1)
@@ -37,10 +35,10 @@ class ScorecardTab:
         self.scorecard_service = scorecard_service
         self.settings = settings or {}
 
-        self.current_data: Optional[ScorecardData] = None
-        self.filtered_rows: List[DAWeeklyPerformance] = []
-        self._all_rows: List[DAWeeklyPerformance] = []
-        self._current_path: Optional[str] = self.settings.get("scorecard_pdf_path")
+        self.current_data: ScorecardData | None = None
+        self.filtered_rows: list[DAWeeklyPerformance] = []
+        self._all_rows: list[DAWeeklyPerformance] = []
+        self._current_path: str | None = self.settings.get("scorecard_pdf_path")
 
         self.search_var = ctk.StringVar(value="")
         self.tier_var = ctk.StringVar(value="All")
@@ -207,7 +205,7 @@ class ScorecardTab:
         self._file_var.set(path)
         self.refresh_data(force=True, override_path=path)
 
-    def update_settings(self, settings: Optional[dict]) -> None:
+    def update_settings(self, settings: dict | None) -> None:
         self.settings = settings or {}
         self._current_path = self.settings.get("scorecard_pdf_path")
         self._file_var.set(self._current_path or "")
@@ -215,7 +213,7 @@ class ScorecardTab:
         self.refresh_data()
 
     # ------------------------------------------------------------------
-    def refresh_data(self, *, force: bool = False, override_path: Optional[str] = None) -> None:
+    def refresh_data(self, *, force: bool = False, override_path: str | None = None) -> None:
         path = override_path or self._current_path
         if force and path:
             data = self.scorecard_service.load_scorecard(path)
@@ -254,13 +252,15 @@ class ScorecardTab:
         tier_filter = self.tier_var.get()
 
         def matches(row: DAWeeklyPerformance) -> bool:
-            if query:
-                if query not in row.name.lower() and query not in row.transporter_id.lower():
-                    return False
-            if tier_filter and tier_filter != "All":
-                if row.overall_tier.lower() != tier_filter.lower():
-                    return False
-            return True
+            if query and (
+                query not in row.name.lower() and query not in row.transporter_id.lower()
+            ):
+                return False
+            return not (
+                tier_filter
+                and tier_filter != "All"
+                and row.overall_tier.lower() != tier_filter.lower()
+            )
 
         filtered = [row for row in rows if matches(row)]
         self.filtered_rows = filtered
@@ -268,7 +268,7 @@ class ScorecardTab:
         self._update_summary()
 
     # ------------------------------------------------------------------
-    def _populate_tree(self, rows: List[DAWeeklyPerformance]) -> None:
+    def _populate_tree(self, rows: list[DAWeeklyPerformance]) -> None:
         self.tree.delete(*self.tree.get_children())
         for row in rows:
             values = [
@@ -305,7 +305,7 @@ class ScorecardTab:
         rows = self.filtered_rows
         total = len(getattr(self, "_all_rows", []))
         visible = len(rows)
-        tiers = Counter((row.overall_tier or "Unknown" for row in rows))
+        tiers = Counter(row.overall_tier or "Unknown" for row in rows)
         parts = [
             f"Showing {visible} of {total} associates",
         ]
@@ -386,19 +386,19 @@ class ScorecardTab:
 
     # ------------------------------------------------------------------
     @staticmethod
-    def _format_percent(value: Optional[float]) -> str:
+    def _format_percent(value: float | None) -> str:
         if value is None:
             return ""
         return f"{value:.1f}%"
 
     @staticmethod
-    def _format_float(value: Optional[float]) -> str:
+    def _format_float(value: float | None) -> str:
         if value is None:
             return ""
         return f"{value:.1f}"
 
     @staticmethod
-    def _format_int(value: Optional[int]) -> str:
+    def _format_int(value: int | None) -> str:
         if value is None:
             return ""
         return f"{value:,}"

@@ -7,10 +7,12 @@ This service provides a single source of truth for configuration by:
 4. Providing clear priority: Runtime > JSON > Environment > Defaults
 """
 
+from __future__ import annotations
+
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -67,7 +69,7 @@ class UnifiedConfigurationService(BaseService):
         "cache_ttl_seconds": 3600,
     }
 
-    def __init__(self, config_file: Optional[str] = None):
+    def __init__(self, config_file: str | None = None):
         """Initialize the unified configuration service.
 
         Args:
@@ -76,9 +78,9 @@ class UnifiedConfigurationService(BaseService):
         super().__init__()
 
         self.config_file = config_file or "config/settings.json"
-        self.env_config: Dict[str, Any] = {}
-        self.json_config: Dict[str, Any] = {}
-        self.runtime_config: Dict[str, Any] = {}
+        self.env_config: dict[str, Any] = {}
+        self.json_config: dict[str, Any] = {}
+        self.runtime_config: dict[str, Any] = {}
 
     def initialize(self) -> None:
         """Initialize configuration by loading from all sources."""
@@ -140,8 +142,8 @@ class UnifiedConfigurationService(BaseService):
             return
 
         try:
-            with open(config_path, "r") as f:
-                self.json_config = json.load(f)
+            with open(config_path, encoding="utf-8") as file_handle:
+                self.json_config = json.load(file_handle)
 
             logger.debug(f"Loaded {len(self.json_config)} settings from {self.config_file}")
 
@@ -204,15 +206,15 @@ class UnifiedConfigurationService(BaseService):
         config_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            with open(config_path, "w") as f:
-                json.dump(self.json_config, f, indent=2)
+            with open(config_path, "w", encoding="utf-8") as file_handle:
+                json.dump(self.json_config, file_handle, indent=2)
 
             logger.info(f"Saved configuration to {self.config_file}")
 
         except Exception as e:
             logger.error(f"Failed to save config file: {e}")
 
-    def get_all(self) -> Dict[str, Any]:
+    def get_all(self) -> dict[str, Any]:
         """Get all configuration values with priority resolution.
 
         Returns:
@@ -255,8 +257,8 @@ class UnifiedConfigurationService(BaseService):
         config = self.get_all()
 
         try:
-            with open(file_path, "w") as f:
-                json.dump(config, f, indent=2)
+            with open(file_path, "w", encoding="utf-8") as file_handle:
+                json.dump(config, file_handle, indent=2)
 
             logger.info(f"Exported configuration to {file_path}")
 
@@ -272,8 +274,8 @@ class UnifiedConfigurationService(BaseService):
             persist: If True, save imported config to JSON file
         """
         try:
-            with open(file_path, "r") as f:
-                imported_config = json.load(f)
+            with open(file_path, encoding="utf-8") as file_handle:
+                imported_config = json.load(file_handle)
 
             # Update runtime config
             self.runtime_config.update(imported_config)
@@ -346,7 +348,7 @@ class UnifiedConfigurationService(BaseService):
 
 
 # Global configuration instance (singleton pattern)
-_config_instance: Optional[UnifiedConfigurationService] = None
+_config_instance: UnifiedConfigurationService | None = None
 
 
 def get_config() -> UnifiedConfigurationService:

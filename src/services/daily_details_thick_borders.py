@@ -1,7 +1,6 @@
 """Daily Details thick border implementation for date-based sections."""
 
 from datetime import date, datetime
-from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -57,7 +56,7 @@ class DailyDetailsThickBorderService:
 
     def _identify_date_sections(
         self, worksheet: Worksheet, start_row: int
-    ) -> Dict[date, Tuple[int, int]]:
+    ) -> dict[date, tuple[int, int]]:
         """
         Identify rows grouped by date in the Daily Details sheet.
 
@@ -105,7 +104,7 @@ class DailyDetailsThickBorderService:
 
         return date_sections
 
-    def _parse_date_value(self, value) -> Optional[date]:
+    def _parse_date_value(self, value) -> date | None:
         """
         Parse a date value from various formats.
 
@@ -139,7 +138,7 @@ class DailyDetailsThickBorderService:
         return None
 
     def _apply_thick_border_to_section(
-        self, worksheet: Worksheet, first_row: int, last_row: int, section_date: date
+        self, worksheet: Worksheet, first_row: int, last_row: int, _section_date: date
     ) -> None:
         """
         Apply thick border around a date section.

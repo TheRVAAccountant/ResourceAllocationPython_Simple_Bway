@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
 
 import pdfplumber
 from loguru import logger
@@ -19,7 +19,7 @@ class ScorecardData:
     """Container for extracted scorecard information."""
 
     metadata: ScorecardMetadata
-    associates: List[DAWeeklyPerformance]
+    associates: list[DAWeeklyPerformance]
 
 
 class ScorecardService:
@@ -27,7 +27,7 @@ class ScorecardService:
 
     def __init__(
         self,
-        settings: Optional[dict] = None,
+        settings: dict | None = None,
         *,
         settings_file: Path = Path("config/settings.json"),
     ) -> None:
@@ -38,19 +38,19 @@ class ScorecardService:
     def _load_settings(self, settings_file: Path) -> dict:
         try:
             if settings_file.exists():
-                with open(settings_file, "r", encoding="utf-8") as handle:
+                with open(settings_file, encoding="utf-8") as handle:
                     return json.load(handle) or {}
         except Exception as exc:
             logger.debug(f"ScorecardService settings load failed: {exc}")
         return {}
 
-    def update_settings(self, settings: Optional[dict]) -> None:
+    def update_settings(self, settings: dict | None) -> None:
         self._settings = settings or {}
 
     # ------------------------------------------------------------------
-    def resolve_scorecard_path(self, explicit_path: Optional[str] = None) -> Optional[Path]:
+    def resolve_scorecard_path(self, explicit_path: str | None = None) -> Path | None:
         """Return the first existing scorecard PDF path."""
-        candidates: Iterable[Optional[str]] = (
+        candidates: Iterable[str | None] = (
             explicit_path,
             self._settings.get("scorecard_pdf_path") if self._settings else None,
             str(Path("inputs") / "US_BWAY_DVA2_Week37_2025_en_DSPScorecard.pdf"),
@@ -64,7 +64,7 @@ class ScorecardService:
         return None
 
     # ------------------------------------------------------------------
-    def load_scorecard(self, path: Optional[str] = None) -> Optional[ScorecardData]:
+    def load_scorecard(self, path: str | None = None) -> ScorecardData | None:
         scorecard_path = self.resolve_scorecard_path(path)
         if not scorecard_path:
             logger.debug("ScorecardService could not resolve scorecard PDF path")
@@ -124,8 +124,8 @@ class ScorecardService:
         )
 
     # ------------------------------------------------------------------
-    def _extract_da_table(self, pdf: pdfplumber.PDF) -> List[DAWeeklyPerformance]:
-        rows: List[DAWeeklyPerformance] = []
+    def _extract_da_table(self, pdf: pdfplumber.PDF) -> list[DAWeeklyPerformance]:
+        rows: list[DAWeeklyPerformance] = []
         for page in pdf.pages:
             text = page.extract_text() or ""
             if "DA Current Week Performance" not in text:
@@ -151,15 +151,15 @@ class ScorecardService:
         return rows
 
     @staticmethod
-    def _find_header_row(table: List[List[Optional[str]]]) -> Optional[List[Optional[str]]]:
+    def _find_header_row(table: list[list[str | None]]) -> list[str | None] | None:
         for row in table:
             if row and row[0] and row[0].strip() == "#":
                 return row
         return None
 
     @staticmethod
-    def _expand_header(header: List[Optional[str]]) -> List[str]:
-        expanded: List[str] = []
+    def _expand_header(header: list[str | None]) -> list[str]:
+        expanded: list[str] = []
         current = ""
         for cell in header:
             if cell is None:
@@ -171,8 +171,8 @@ class ScorecardService:
 
     # ------------------------------------------------------------------
     def _row_to_performance(
-        self, row: List[Optional[str]], column_names: List[str]
-    ) -> Optional[DAWeeklyPerformance]:
+        self, row: list[str | None], column_names: list[str]
+    ) -> DAWeeklyPerformance | None:
         try:
             rank = int((self._cell(row, column_names, "#") or "0").strip() or "0")
             name = (self._cell(row, column_names, "Name") or "").strip()
@@ -219,7 +219,7 @@ class ScorecardService:
             return None
 
     @staticmethod
-    def _cell(row: List[Optional[str]], columns: List[str], key: str) -> Optional[str]:
+    def _cell(row: list[str | None], columns: list[str], key: str) -> str | None:
         for idx, name in enumerate(columns):
             if name == key:
                 if idx < len(row):
@@ -229,14 +229,14 @@ class ScorecardService:
 
     # ------------------------------------------------------------------
     @staticmethod
-    def _normalize_text(value: Optional[str]) -> Optional[str]:
+    def _normalize_text(value: str | None) -> str | None:
         if value is None:
             return None
         cleaned = value.strip()
         return cleaned or None
 
     @staticmethod
-    def _parse_int(value: Optional[str]) -> Optional[int]:
+    def _parse_int(value: str | None) -> int | None:
         if value is None:
             return None
         try:
@@ -248,7 +248,7 @@ class ScorecardService:
             return None
 
     @staticmethod
-    def _parse_float(value: Optional[str]) -> Optional[float]:
+    def _parse_float(value: str | None) -> float | None:
         if value is None:
             return None
         cleaned = value.replace(",", "").strip()
@@ -260,7 +260,7 @@ class ScorecardService:
             return None
 
     @staticmethod
-    def _parse_percent(value: Optional[str]) -> Optional[float]:
+    def _parse_percent(value: str | None) -> float | None:
         if value is None:
             return None
         cleaned = value.strip().replace("%", "")

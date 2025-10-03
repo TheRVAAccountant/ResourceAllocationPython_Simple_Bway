@@ -1,10 +1,9 @@
 """Core allocation engine for resource distribution."""
 
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
-import pandas as pd
 from loguru import logger
 from pydantic import BaseModel, Field, validator
 
@@ -51,7 +50,7 @@ class AllocationEngine(BaseService):
     vehicles to drivers based on various rules and constraints.
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the allocation engine.
 
         Args:
@@ -219,7 +218,7 @@ class AllocationEngine(BaseService):
         allocations: dict,
         vehicles: list[Vehicle],
         drivers: list[Driver],
-        rule: AllocationRule,
+        _rule: AllocationRule,
     ) -> tuple[dict, list[Vehicle], list[Driver]]:
         """Allocate vehicles to priority drivers first.
 
@@ -257,7 +256,7 @@ class AllocationEngine(BaseService):
         allocations: dict,
         vehicles: list[Vehicle],
         drivers: list[Driver],
-        rule: AllocationRule,
+        _rule: AllocationRule,
     ) -> tuple[dict, list[Vehicle], list[Driver]]:
         """Allocate premium vehicles to experienced drivers.
 
@@ -404,7 +403,7 @@ class AllocationEngine(BaseService):
         """
         return self.metrics
 
-    def get_history(self, limit: Optional[int] = None) -> list[AllocationResult]:
+    def get_history(self, limit: int | None = None) -> list[AllocationResult]:
         """Get allocation history.
 
         Args:

@@ -1,8 +1,8 @@
 """Recent File Selector widget combining entry, recent files dropdown, and browse button."""
 
+from collections.abc import Callable
 from pathlib import Path
 from tkinter import StringVar, filedialog
-from typing import Callable, List, Optional, Tuple
 
 import customtkinter as ctk
 from loguru import logger
@@ -20,16 +20,15 @@ class RecentFileSelector(ctk.CTkFrame):
         field_type: FileFieldType,
         textvariable: StringVar,
         placeholder_text: str = "Select file...",
-        filetypes: Optional[List[Tuple[str, str]]] = None,
-        initialfile: Optional[str] = None,
-        on_file_selected: Optional[Callable[[str], None]] = None,
+        filetypes: list[tuple[str, str]] | None = None,
+        initialfile: str | None = None,
+        on_file_selected: Callable[[str], None] | None = None,
         **kwargs,
     ):
         callback = kwargs.pop("on_file_selected_callback", None)
         if on_file_selected is None and callback is not None:
             on_file_selected = callback
         """Initialize the recent file selector.
-        
         Args:
             parent: Parent widget.
             field_type: Type of file field (for recent files tracking).
@@ -130,7 +129,8 @@ class RecentFileSelector(ctk.CTkFrame):
                 self.recent_popup.destroy()
                 self.recent_popup = None
                 # Unbind this event
-                self.winfo_toplevel().unbind("<Button-1>", bind_id)
+                if hasattr(self, "_popup_bind_id"):
+                    self.winfo_toplevel().unbind("<Button-1>", self._popup_bind_id)
 
         # Bind after popup is created
         self.after(
@@ -217,7 +217,7 @@ class RecentFileSelector(ctk.CTkFrame):
             # Store reference
             widget._tooltip = tooltip
 
-        def on_leave(event):
+        def on_leave(_event):
             # Destroy tooltip
             if hasattr(widget, "_tooltip"):
                 widget._tooltip.destroy()

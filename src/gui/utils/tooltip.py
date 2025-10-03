@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from contextlib import suppress
 
 import customtkinter as ctk
 
@@ -14,9 +14,9 @@ class HoverTooltip:
         self._master = master
         self._delay = delay_ms
         self._max_width = max_width
-        self._after_id: Optional[str] = None
-        self._tooltip: Optional[ctk.CTkToplevel] = None
-        self._label: Optional[ctk.CTkLabel] = None
+        self._after_id: str | None = None
+        self._tooltip: ctk.CTkToplevel | None = None
+        self._label: ctk.CTkLabel | None = None
         self._current_text: str = ""
 
     # ------------------------------------------------------------------
@@ -41,19 +41,15 @@ class HoverTooltip:
     def cancel(self) -> None:
         """Cancel pending tooltip or hide active tooltip."""
         if self._after_id and self._master:
-            try:
+            with suppress(Exception):
                 self._master.after_cancel(self._after_id)
-            except Exception:
-                pass
         self._after_id = None
         self.hide()
 
     def hide(self) -> None:
         if self._tooltip is not None:
-            try:
+            with suppress(Exception):
                 self._tooltip.destroy()
-            except Exception:
-                pass
         self._tooltip = None
         self._label = None
 

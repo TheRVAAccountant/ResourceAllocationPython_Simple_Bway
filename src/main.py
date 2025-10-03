@@ -1,9 +1,8 @@
 """Main application entry point for Resource Management System."""
 
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 import click
 from dotenv import load_dotenv
@@ -12,10 +11,16 @@ from loguru import logger
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.core.allocation_engine import AllocationEngine
-from src.models.allocation import AllocationRequest, Driver, Priority, Vehicle, VehicleType
-from src.services.border_formatting_service import BorderFormattingService
-from src.services.excel_service import ExcelService
+from src.core.allocation_engine import AllocationEngine  # noqa: E402
+from src.models.allocation import (  # noqa: E402
+    AllocationRequest,
+    Driver,
+    Priority,
+    Vehicle,
+    VehicleType,
+)
+from src.services.border_formatting_service import BorderFormattingService  # noqa: E402
+from src.services.excel_service import ExcelService  # noqa: E402
 
 # Load environment variables
 load_dotenv()
@@ -35,7 +40,7 @@ logger.add(
 class ResourceAllocationApp:
     """Main application class for Resource Management System."""
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """Initialize the application.
 
         Args:
@@ -46,7 +51,7 @@ class ResourceAllocationApp:
         self.excel_service = None
         self.border_service = None
 
-    def _load_config(self, config_path: Optional[str]) -> dict:
+    def _load_config(self, config_path: str | None) -> dict:
         """Load configuration from file or environment.
 
         Args:
@@ -105,7 +110,7 @@ class ResourceAllocationApp:
         self,
         input_file: str,
         output_file: str,
-        allocation_date: Optional[date] = None,
+        allocation_date: date | None = None,
         open_output: bool = False,
     ):
         """Run the allocation process.
@@ -116,7 +121,7 @@ class ResourceAllocationApp:
             allocation_date: Date for allocation (defaults to today).
         """
         try:
-            logger.info(f"Starting allocation process")
+            logger.info("Starting allocation process")
             logger.info(f"Input: {input_file}, Output: {output_file}")
 
             # Initialize services
@@ -152,7 +157,7 @@ class ResourceAllocationApp:
 
             # Log summary
             summary = result.get_allocation_summary()
-            logger.info(f"Allocation completed successfully")
+            logger.info("Allocation completed successfully")
             logger.info(f"Total drivers: {summary['total_drivers']}")
             logger.info(f"Allocated vehicles: {summary['total_allocated_vehicles']}")
             logger.info(f"Unallocated vehicles: {summary['total_unallocated_vehicles']}")
@@ -246,7 +251,7 @@ class ResourceAllocationApp:
         )
 
         # Create summary sheet
-        summary_sheet = self.excel_service.create_sheet("Summary")
+        _summary_sheet = self.excel_service.create_sheet("Summary")
         summary_data = {
             "Request ID": result.request_id,
             "Status": result.status,

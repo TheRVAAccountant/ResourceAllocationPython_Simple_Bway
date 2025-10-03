@@ -2,12 +2,13 @@
 
 import smtplib
 import time
+from contextlib import suppress
+from datetime import datetime
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -17,7 +18,6 @@ from src.models.email import (
     EmailConfiguration,
     EmailMessage,
     EmailPriority,
-    EmailRecipient,
     EmailStatus,
     EmailTemplate,
 )
@@ -30,7 +30,7 @@ class EmailService(BaseService):
     for allocation notifications and system alerts.
     """
 
-    def __init__(self, config: Optional[dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize the email service.
 
         Args:
@@ -97,10 +97,8 @@ class EmailService(BaseService):
     def cleanup(self) -> None:
         """Clean up email service resources."""
         if self.smtp_connection:
-            try:
+            with suppress(Exception):
                 self.smtp_connection.quit()
-            except:
-                pass
 
         super().cleanup()
 
@@ -234,11 +232,13 @@ Resource Management System""",
                 if self.email_config.username and self.email_config.password:
                     smtp.login(self.email_config.username, self.email_config.password)
 
-                # Get recipient addresses
-                to_addrs = [r.email for r in message.recipients]
-
                 # Send message
-                smtp.send_message(mime_msg)
+                recipient_addresses = [recipient.email for recipient in message.recipients]
+                smtp.send_message(
+                    mime_msg,
+                    from_addr=message.sender,
+                    to_addrs=recipient_addresses,
+                )
 
                 message.mark_as_sent()
                 logger.info(f"Email sent successfully: {message.subject}")
@@ -368,8 +368,8 @@ Resource Management System""",
     def send_allocation_notification(
         self,
         result: AllocationResult,
-        recipients: Optional[list[str]] = None,
-        attach_report: bool = True,
+        recipients: list[str] | None = None,
+        _attach_report: bool = True,
     ) -> bool:
         """Send allocation result notification.
 
@@ -424,8 +424,8 @@ Resource Management System""",
     def send_error_notification(
         self,
         error: str,
-        context: Optional[dict[str, Any]] = None,
-        recipients: Optional[list[str]] = None,
+        context: dict[str, Any] | None = None,
+        recipients: list[str] | None = None,
     ) -> bool:
         """Send error notification.
 
@@ -480,7 +480,7 @@ Resource Management System""",
         else:
             logger.error(f"Invalid template: {template.template_id}")
 
-    def get_template(self, template_id: str) -> Optional[EmailTemplate]:
+    def get_template(self, template_id: str) -> EmailTemplate | None:
         """Get email template by ID.
 
         Args:

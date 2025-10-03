@@ -1,7 +1,8 @@
 """History card component for displaying allocation history entries."""
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 import customtkinter as ctk
 
@@ -19,7 +20,7 @@ class HistoryCard(ctk.CTkFrame):
     """
 
     def __init__(
-        self, parent, entry: Dict[str, Any], on_details_click: Optional[Callable] = None, **kwargs
+        self, parent, entry: dict[str, Any], on_details_click: Callable | None = None, **kwargs
     ):
         """Initialize history card.
 
@@ -168,16 +169,16 @@ class HistoryCard(ctk.CTkFrame):
             return f"⚠️ {self.duplicate_count} {suffix}"
         return "✓ Success"
 
-    def _on_hover_enter(self, event):
+    def _on_hover_enter(self, _event):
         """Handle mouse enter (hover effect)."""
         self.configure(border_color=resolve_color(("gray50", "gray40")))
 
-    def _on_hover_leave(self, event):
+    def _on_hover_leave(self, _event):
         """Handle mouse leave."""
         self.configure(border_color=resolve_color(("gray70", "gray30")))
 
     @staticmethod
-    def _resolve_duplicate_count(entry: Dict[str, Any]) -> int:
+    def _resolve_duplicate_count(entry: dict[str, Any]) -> int:
         """Safely resolve duplicate conflict count from mixed formats."""
         if entry is None:
             return 0
@@ -188,9 +189,9 @@ class HistoryCard(ctk.CTkFrame):
         if isinstance(raw, int):
             return max(raw, 0)
         details = entry.get("duplicate_conflict_details")
-        if isinstance(details, (list, tuple, set)):
+        if isinstance(details, list | tuple | set):
             return len([item for item in details if item is not None])
-        if isinstance(raw, (list, tuple, set)):
+        if isinstance(raw, list | tuple | set):
             return len([item for item in raw if item is not None])
         if not raw:
             return 0

@@ -3,7 +3,6 @@
 import os
 from datetime import date, datetime
 from pathlib import Path
-from typing import Dict, Optional
 
 import pandas as pd
 from loguru import logger
@@ -95,9 +94,9 @@ class AllocationOutputWriter(BaseService):
         self,
         allocation_result: AllocationResult,
         unassigned_vehicles: pd.DataFrame,
-        vehicle_log_dict: Dict[str, Dict],
-        allocation_date: Optional[date] = None,
-        file_suffix: Optional[str] = None,
+        vehicle_log_dict: dict[str, dict],
+        allocation_date: date | None = None,
+        file_suffix: str | None = None,
     ) -> str:
         """Create a new Excel file with allocation results.
 
@@ -163,8 +162,8 @@ class AllocationOutputWriter(BaseService):
         self,
         workbook: Workbook,
         allocation_result: AllocationResult,
-        vehicle_log_dict: Dict[str, Dict],
-        allocation_date: date,
+        vehicle_log_dict: dict[str, dict],
+        _allocation_date: date,
     ) -> None:
         """Create the Results sheet with allocation data."""
         sheet = workbook.create_sheet("Results")
@@ -264,7 +263,7 @@ class AllocationOutputWriter(BaseService):
         self,
         workbook: Workbook,
         unassigned_vehicles: pd.DataFrame,
-        vehicle_log_dict: Dict[str, Dict],
+        vehicle_log_dict: dict[str, dict],
         allocation_date: date,
     ) -> None:
         """Create the Unassigned Vehicles sheet."""

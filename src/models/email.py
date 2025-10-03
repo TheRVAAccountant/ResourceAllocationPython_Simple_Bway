@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field, validator
 
@@ -32,7 +32,7 @@ class EmailRecipient(BaseModel):
     """Represents an email recipient."""
 
     email: EmailStr
-    name: Optional[str] = None
+    name: str | None = None
     recipient_type: str = "to"  # "to", "cc", "bcc"
 
     @validator("recipient_type")
@@ -53,10 +53,10 @@ class EmailAttachment(BaseModel):
     """Represents an email attachment."""
 
     filename: str
-    content: Optional[bytes] = None
+    content: bytes | None = None
     content_type: str = "application/octet-stream"
-    file_path: Optional[Path] = None
-    size: Optional[int] = None
+    file_path: Path | None = None
+    size: int | None = None
 
     @validator("file_path")
     def validate_file_path(cls, v):
@@ -88,9 +88,9 @@ class EmailMessage(BaseModel):
 
     subject: str
     body: str
-    body_html: Optional[str] = None
+    body_html: str | None = None
     sender: EmailStr
-    sender_name: Optional[str] = None
+    sender_name: str | None = None
     recipients: list[EmailRecipient]
     attachments: list[EmailAttachment] = Field(default_factory=list)
     priority: EmailPriority = EmailPriority.NORMAL
@@ -98,8 +98,8 @@ class EmailMessage(BaseModel):
     headers: dict[str, str] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
-    sent_at: Optional[datetime] = None
-    error_message: Optional[str] = None
+    sent_at: datetime | None = None
+    error_message: str | None = None
     retry_count: int = 0
     max_retries: int = 3
 
@@ -133,7 +133,7 @@ class EmailMessage(BaseModel):
         """
         return [r for r in self.recipients if r.recipient_type == recipient_type]
 
-    def add_recipient(self, email: str, name: Optional[str] = None, recipient_type: str = "to"):
+    def add_recipient(self, email: str, name: str | None = None, recipient_type: str = "to"):
         """Add a recipient.
 
         Args:
@@ -144,7 +144,7 @@ class EmailMessage(BaseModel):
         recipient = EmailRecipient(email=email, name=name, recipient_type=recipient_type)
         self.recipients.append(recipient)
 
-    def add_attachment(self, file_path: Path, filename: Optional[str] = None):
+    def add_attachment(self, file_path: Path, filename: str | None = None):
         """Add an attachment from file.
 
         Args:
@@ -194,12 +194,12 @@ class EmailTemplate(BaseModel):
 
     template_id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     subject_template: str
     body_template: str
-    body_html_template: Optional[str] = None
+    body_html_template: str | None = None
     variables: list[str] = Field(default_factory=list)
-    category: Optional[str] = None
+    category: str | None = None
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
@@ -213,7 +213,7 @@ class EmailTemplate(BaseModel):
         return v
 
     @validator("variables")
-    def extract_variables(cls, v, values):
+    def extract_variables(cls, _value, values):
         """Extract variables from templates."""
         import re
 
@@ -281,9 +281,6 @@ class EmailTemplate(BaseModel):
         """
         import re
 
-        # Check for balanced braces
-        pattern = r"\{\{(\w+)\}\}"
-
         for template in [self.subject_template, self.body_template, self.body_html_template]:
             if template:
                 # Check for unclosed variables
@@ -314,11 +311,11 @@ class EmailConfiguration(BaseModel):
     smtp_port: int = 587
     use_tls: bool = True
     use_ssl: bool = False
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
     from_email: EmailStr = "noreply@resourceallocation.com"
     from_name: str = "Resource Management System"
-    reply_to: Optional[EmailStr] = None
+    reply_to: EmailStr | None = None
     default_recipients: list[EmailStr] = Field(default_factory=list)
     cc_recipients: list[EmailStr] = Field(default_factory=list)
     bcc_recipients: list[EmailStr] = Field(default_factory=list)
@@ -338,7 +335,6 @@ class EmailConfiguration(BaseModel):
     def validate_encryption(cls, v, values):
         """Validate encryption settings."""
         # Can't use both TLS and SSL
-        if "use_tls" in values and "use_ssl" in values:
-            if values["use_tls"] and values["use_ssl"]:
-                raise ValueError("Cannot use both TLS and SSL")
+        if "use_tls" in values and "use_ssl" in values and values["use_tls"] and values["use_ssl"]:
+            raise ValueError("Cannot use both TLS and SSL")
         return v

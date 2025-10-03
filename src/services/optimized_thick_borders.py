@@ -1,14 +1,11 @@
 """Optimized Daily Details thick border implementation with performance improvements."""
 
-import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
-from typing import Dict, List, Optional, Set, Tuple
 
 from loguru import logger
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 
@@ -58,7 +55,7 @@ class OptimizedThickBorderService:
         self.date_header_alignment = Alignment(horizontal="left", vertical="center")
 
     def apply_thick_borders_optimized(
-        self, worksheet: Worksheet, start_row: int = 2, progress_callback: Optional[callable] = None
+        self, worksheet: Worksheet, start_row: int = 2, progress_callback: callable | None = None
     ) -> None:
         """Apply thick borders using optimized batch operations.
 
@@ -88,7 +85,7 @@ class OptimizedThickBorderService:
 
     def _identify_date_sections_fast(
         self, worksheet: Worksheet, start_row: int
-    ) -> Dict[date, Tuple[int, int]]:
+    ) -> dict[date, tuple[int, int]]:
         """Identify date sections using optimized reading strategy.
 
         Uses worksheet.iter_rows for better performance on large datasets.
@@ -131,7 +128,7 @@ class OptimizedThickBorderService:
 
         return date_sections
 
-    def _parse_date_cached(self, value) -> Optional[date]:
+    def _parse_date_cached(self, value) -> date | None:
         """Parse date with caching for repeated values."""
         if value is None:
             return None
@@ -148,7 +145,7 @@ class OptimizedThickBorderService:
         self.date_cache[cache_key] = parsed_date
         return parsed_date
 
-    def _parse_date_value(self, value) -> Optional[date]:
+    def _parse_date_value(self, value) -> date | None:
         """Parse a date value from various formats."""
         if isinstance(value, datetime):
             return value.date()
@@ -164,8 +161,8 @@ class OptimizedThickBorderService:
         return None
 
     def _calculate_border_operations(
-        self, date_sections: Dict[date, Tuple[int, int]]
-    ) -> List[Dict]:
+        self, date_sections: dict[date, tuple[int, int]]
+    ) -> list[dict]:
         """Pre-calculate all border operations for batch processing."""
         operations = []
 
@@ -177,8 +174,8 @@ class OptimizedThickBorderService:
         return operations
 
     def _calculate_section_borders(
-        self, first_row: int, last_row: int, section_date: date
-    ) -> List[Dict]:
+        self, first_row: int, last_row: int, _section_date: date
+    ) -> list[dict]:
         """Calculate border operations for a single date section."""
         operations = []
         first_col, last_col = 1, 24  # Daily Details columns
@@ -220,8 +217,8 @@ class OptimizedThickBorderService:
     def _apply_borders_batch(
         self,
         worksheet: Worksheet,
-        operations: List[Dict],
-        progress_callback: Optional[callable] = None,
+        operations: list[dict],
+        progress_callback: callable | None = None,
     ):
         """Apply border operations in batches for better performance."""
         total_ops = len(operations)
@@ -253,9 +250,9 @@ class OptimizedThickBorderService:
     def apply_thick_borders_parallel(
         self,
         worksheet: Worksheet,
-        date_sections: Dict[date, Tuple[int, int]],
+        date_sections: dict[date, tuple[int, int]],
         max_workers: int = 4,
-        progress_callback: Optional[callable] = None,
+        progress_callback: callable | None = None,
     ) -> None:
         """Apply thick borders using parallel processing for very large datasets.
 
@@ -277,14 +274,12 @@ class OptimizedThickBorderService:
             futures.append(future)
 
         # Wait for completion and track progress
-        completed = 0
-        for future in futures:
+        for completed, future in enumerate(futures, start=1):
             future.result()
-            completed += 1
             if progress_callback:
                 progress_callback(completed / len(futures) * 100)
 
-    def _process_sections_chunk(self, worksheet: Worksheet, sections: Dict[date, Tuple[int, int]]):
+    def _process_sections_chunk(self, worksheet: Worksheet, sections: dict[date, tuple[int, int]]):
         """Process a chunk of date sections."""
         operations = []
         for section_date, (first_row, last_row) in sections.items():
@@ -301,7 +296,7 @@ class OptimizedThickBorderService:
             self.executor = None
         self.date_cache.clear()
 
-    def get_performance_stats(self) -> Dict[str, any]:
+    def get_performance_stats(self) -> dict[str, any]:
         """Get performance statistics."""
         return {
             "cached_dates": len(self.date_cache),
