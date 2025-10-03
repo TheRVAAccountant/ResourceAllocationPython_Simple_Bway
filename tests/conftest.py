@@ -1,20 +1,26 @@
 """Shared pytest fixtures for Resource Allocation Python test suite."""
 
+import sys
 import tempfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
-import numpy as np
-import pandas as pd
-import pytest
-from openpyxl import Workbook
+# Ensure the correct project root is in sys.path first
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
-from src.core.gas_compatible_allocator import GASCompatibleAllocator
-from src.services.daily_details_thick_borders import DailyDetailsThickBorderService
-from src.services.daily_details_writer import DailyDetailsWriter
-from src.services.duplicate_validator import DuplicateVehicleValidator
-from src.services.unassigned_vehicles_writer import UnassignedVehiclesWriter
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+import pytest  # noqa: E402
+from openpyxl import Workbook  # noqa: E402
+
+from src.core.gas_compatible_allocator import GASCompatibleAllocator  # noqa: E402
+from src.services.daily_details_thick_borders import DailyDetailsThickBorderService  # noqa: E402
+from src.services.daily_details_writer import DailyDetailsWriter  # noqa: E402
+from src.services.duplicate_validator import DuplicateVehicleValidator  # noqa: E402
+from src.services.unassigned_vehicles_writer import UnassignedVehiclesWriter  # noqa: E402
 
 # ==================== Test Data Fixtures ====================
 
@@ -512,7 +518,7 @@ def test_dates():
 # ==================== Mock Data Generators ====================
 
 
-def generate_allocation_results(count: int, duplicate_rate: float = 0.0) -> List[Dict[str, Any]]:
+def generate_allocation_results(count: int, duplicate_rate: float = 0.0) -> list[dict[str, Any]]:
     """Generate allocation results with optional duplicates.
 
     Args:
@@ -526,11 +532,8 @@ def generate_allocation_results(count: int, duplicate_rate: float = 0.0) -> List
     van_ids = [f"BW{i+1}" for i in range(max(1, int(count * (1 - duplicate_rate))))]
 
     for i in range(count):
-        if i < len(van_ids):
-            van_id = van_ids[i]
-        else:
-            # Create duplicates by reusing van IDs
-            van_id = van_ids[i % len(van_ids)]
+        # Create duplicates by reusing van IDs when i >= len(van_ids)
+        van_id = van_ids[i] if i < len(van_ids) else van_ids[i % len(van_ids)]
 
         results.append(
             {

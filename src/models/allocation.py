@@ -59,14 +59,14 @@ class Vehicle(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @validator("vehicle_number")
-    def validate_vehicle_number(cls, v):
+    def validate_vehicle_number(cls, v: str) -> str:
         """Validate vehicle number format."""
         if not v or len(v) < 3:
             raise ValueError("Vehicle number must be at least 3 characters")
         return v.upper()
 
     @validator("fuel_level")
-    def validate_fuel_level(cls, v):
+    def validate_fuel_level(cls, v: Decimal | None) -> Decimal | None:
         """Validate fuel level is between 0 and 100."""
         if v is not None and (v < 0 or v > 100):
             raise ValueError("Fuel level must be between 0 and 100")
@@ -104,14 +104,14 @@ class Driver(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @validator("name")
-    def validate_name(cls, v):
+    def validate_name(cls, v: str) -> str:
         """Validate driver name."""
         if not v or len(v.strip()) < 2:
             raise ValueError("Driver name must be at least 2 characters")
         return v.strip()
 
     @validator("employee_id")
-    def validate_employee_id(cls, v):
+    def validate_employee_id(cls, v: str) -> str:
         """Validate employee ID."""
         if not v:
             raise ValueError("Employee ID is required")
@@ -142,14 +142,14 @@ class AllocationRequest(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
 
     @validator("vehicles")
-    def validate_vehicles(cls, v):
+    def validate_vehicles(cls, v: list[Vehicle]) -> list[Vehicle]:
         """Validate vehicles list."""
         if not v:
             raise ValueError("At least one vehicle is required")
         return v
 
     @validator("drivers")
-    def validate_drivers(cls, v):
+    def validate_drivers(cls, v: list[Driver]) -> list[Driver]:
         """Validate drivers list."""
         if not v:
             raise ValueError("At least one driver is required")
@@ -180,7 +180,7 @@ class AllocationResult(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @validator("allocations")
-    def validate_allocations(cls, v):
+    def validate_allocations(cls, v: dict[str, list[str]]) -> dict[str, list[str]]:
         """Validate allocations structure."""
         for driver_id, vehicles in v.items():
             if not isinstance(vehicles, list):

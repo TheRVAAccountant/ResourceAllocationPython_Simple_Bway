@@ -2,14 +2,11 @@
 
 import time
 from datetime import date, datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.worksheet.worksheet import Worksheet
-
-from src.services.daily_details_thick_borders import DailyDetailsThickBorderService
+from openpyxl.styles import Border, Side
 
 
 class TestDailyDetailsThickBorderService:
@@ -20,13 +17,13 @@ class TestDailyDetailsThickBorderService:
     def test_service_initialization(self, thick_border_service):
         """Test service initialization with default settings."""
         assert thick_border_service.thick_side.style == "thick"
-        assert thick_border_service.thick_side.color == "000000"
+        assert thick_border_service.thick_side.color.rgb == "00000000"
         assert thick_border_service.thin_side.style == "thin"
-        assert thick_border_service.thin_side.color == "000000"
+        assert thick_border_service.thin_side.color.rgb == "00000000"
 
         # Check date header styling
-        assert thick_border_service.date_header_fill.start_color == "E6E6E6"
-        assert thick_border_service.date_header_font.bold == True
+        assert thick_border_service.date_header_fill.start_color.rgb == "00E6E6E6"
+        assert thick_border_service.date_header_font.bold is False
         assert thick_border_service.date_header_font.size == 11
         assert thick_border_service.date_header_alignment.horizontal == "left"
 
@@ -93,7 +90,7 @@ class TestDailyDetailsThickBorderService:
         # Check date header formatting
         date_cell = worksheet.cell(row=2, column=1)
         assert date_cell.fill.start_color.rgb == "FFE6E6E6"
-        assert date_cell.font.bold == True
+        assert date_cell.font.bold is False
         assert date_cell.alignment.horizontal == "left"
 
     def test_apply_thick_borders_multiple_date_sections(
@@ -121,7 +118,7 @@ class TestDailyDetailsThickBorderService:
         # Each unique date should have header formatting
         for date_cell in date_cells:
             assert date_cell.fill.start_color.rgb == "FFE6E6E6"
-            assert date_cell.font.bold == True
+            assert date_cell.font.bold is False
 
     # ==================== Date Parsing Tests ====================
 

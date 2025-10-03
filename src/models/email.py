@@ -36,7 +36,7 @@ class EmailRecipient(BaseModel):
     recipient_type: str = "to"  # "to", "cc", "bcc"
 
     @validator("recipient_type")
-    def validate_recipient_type(cls, v):
+    def validate_recipient_type(cls, v: str) -> str:
         """Validate recipient type."""
         if v not in ["to", "cc", "bcc"]:
             raise ValueError("Recipient type must be 'to', 'cc', or 'bcc'")
@@ -46,7 +46,7 @@ class EmailRecipient(BaseModel):
         """String representation."""
         if self.name:
             return f'"{self.name}" <{self.email}>'
-        return self.email
+        return str(self.email)
 
 
 class EmailAttachment(BaseModel):
@@ -59,7 +59,7 @@ class EmailAttachment(BaseModel):
     size: int | None = None
 
     @validator("file_path")
-    def validate_file_path(cls, v):
+    def validate_file_path(cls, v: Path | None) -> Path | None:
         """Validate file path exists."""
         if v and not v.exists():
             raise ValueError(f"File not found: {v}")
@@ -104,7 +104,7 @@ class EmailMessage(BaseModel):
     max_retries: int = 3
 
     @validator("recipients")
-    def validate_recipients(cls, v):
+    def validate_recipients(cls, v: list[EmailRecipient]) -> list[EmailRecipient]:
         """Validate at least one recipient exists."""
         if not v:
             raise ValueError("At least one recipient is required")
@@ -116,7 +116,7 @@ class EmailMessage(BaseModel):
         return v
 
     @validator("subject")
-    def validate_subject(cls, v):
+    def validate_subject(cls, v: str) -> str:
         """Validate subject is not empty."""
         if not v or not v.strip():
             raise ValueError("Subject cannot be empty")
@@ -133,7 +133,9 @@ class EmailMessage(BaseModel):
         """
         return [r for r in self.recipients if r.recipient_type == recipient_type]
 
-    def add_recipient(self, email: str, name: str | None = None, recipient_type: str = "to"):
+    def add_recipient(
+        self, email: str, name: str | None = None, recipient_type: str = "to"
+    ) -> None:
         """Add a recipient.
 
         Args:
@@ -144,7 +146,7 @@ class EmailMessage(BaseModel):
         recipient = EmailRecipient(email=email, name=name, recipient_type=recipient_type)
         self.recipients.append(recipient)
 
-    def add_attachment(self, file_path: Path, filename: str | None = None):
+    def add_attachment(self, file_path: Path, filename: str | None = None) -> None:
         """Add an attachment from file.
 
         Args:
@@ -157,12 +159,12 @@ class EmailMessage(BaseModel):
         attachment = EmailAttachment(filename=filename or file_path.name, file_path=file_path)
         self.attachments.append(attachment)
 
-    def mark_as_sent(self):
+    def mark_as_sent(self) -> None:
         """Mark email as sent."""
         self.status = EmailStatus.SENT
         self.sent_at = datetime.now()
 
-    def mark_as_failed(self, error: str):
+    def mark_as_failed(self, error: str) -> None:
         """Mark email as failed.
 
         Args:
@@ -206,14 +208,14 @@ class EmailTemplate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @validator("template_id")
-    def validate_template_id(cls, v):
+    def validate_template_id(cls, v: str) -> str:
         """Validate template ID format."""
         if not v or not v.replace("_", "").replace("-", "").isalnum():
             raise ValueError("Template ID must be alphanumeric with underscores or hyphens")
         return v
 
     @validator("variables")
-    def extract_variables(cls, _value, values):
+    def extract_variables(cls, _value: list[str] | None, values: dict[str, Any]) -> list[str]:
         """Extract variables from templates."""
         import re
 
@@ -325,14 +327,14 @@ class EmailConfiguration(BaseModel):
     debug: bool = False
 
     @validator("smtp_port")
-    def validate_port(cls, v):
+    def validate_port(cls, v: int) -> int:
         """Validate SMTP port."""
         if not 1 <= v <= 65535:
             raise ValueError("Port must be between 1 and 65535")
         return v
 
     @validator("use_tls", "use_ssl")
-    def validate_encryption(cls, v, values):
+    def validate_encryption(cls, v: bool, values: dict[str, Any]) -> bool:
         """Validate encryption settings."""
         # Can't use both TLS and SSL
         if "use_tls" in values and "use_ssl" in values and values["use_tls"] and values["use_ssl"]:

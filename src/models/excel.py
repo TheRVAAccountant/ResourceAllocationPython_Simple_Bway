@@ -1,6 +1,7 @@
 """Excel-related data models."""
 
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel, Field, validator
 
@@ -54,14 +55,14 @@ class ExcelColor(BaseModel):
     tint: float | None = None  # Tint value (-1 to 1)
 
     @validator("rgb")
-    def validate_rgb(cls, v):
+    def validate_rgb(cls, v: str | None) -> str | None:
         """Validate RGB color format."""
         if v and not (len(v) == 6 and all(c in "0123456789ABCDEFabcdef" for c in v)):
             raise ValueError("RGB must be a 6-character hex string")
         return v.upper() if v else v
 
     @validator("tint")
-    def validate_tint(cls, v):
+    def validate_tint(cls, v: float | None) -> float | None:
         """Validate tint value."""
         if v is not None and not -1 <= v <= 1:
             raise ValueError("Tint must be between -1 and 1")
@@ -112,7 +113,7 @@ class ExcelAlignment(BaseModel):
     indent: int = 0
 
     @validator("text_rotation")
-    def validate_rotation(cls, v):
+    def validate_rotation(cls, v: int) -> int:
         """Validate text rotation angle."""
         if not -90 <= v <= 90 and v != 255:  # 255 is vertical text
             raise ValueError("Text rotation must be between -90 and 90 or 255")
@@ -141,14 +142,14 @@ class ExcelRange(BaseModel):
     end_col: int = Field(ge=1)
 
     @validator("end_row")
-    def validate_end_row(cls, v, values):
+    def validate_end_row(cls, v: int, values: dict[str, Any]) -> int:
         """Validate end row is not before start row."""
         if "start_row" in values and v < values["start_row"]:
             raise ValueError("End row cannot be before start row")
         return v
 
     @validator("end_col")
-    def validate_end_col(cls, v, values):
+    def validate_end_col(cls, v: int, values: dict[str, Any]) -> int:
         """Validate end column is not before start column."""
         if "start_col" in values and v < values["start_col"]:
             raise ValueError("End column cannot be before start column")
@@ -240,7 +241,7 @@ class ExcelWorksheet(BaseModel):
     column_widths: dict[int, float] = Field(default_factory=dict)
 
     @validator("name")
-    def validate_name(cls, v):
+    def validate_name(cls, v: str) -> str:
         """Validate worksheet name."""
         invalid_chars = [":", "\\", "/", "?", "*", "[", "]"]
         if any(char in v for char in invalid_chars):
@@ -250,7 +251,7 @@ class ExcelWorksheet(BaseModel):
         return v
 
     @validator("zoom")
-    def validate_zoom(cls, v):
+    def validate_zoom(cls, v: int) -> int:
         """Validate zoom level."""
         if not 10 <= v <= 400:
             raise ValueError("Zoom must be between 10 and 400")
@@ -265,7 +266,7 @@ class ExcelFormula(BaseModel):
     range: ExcelRange | None = None
 
     @validator("formula")
-    def validate_formula(cls, v):
+    def validate_formula(cls, v: str) -> str:
         """Validate formula starts with =."""
         if not v.startswith("="):
             v = "=" + v
