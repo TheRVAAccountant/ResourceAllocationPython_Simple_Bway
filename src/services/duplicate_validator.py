@@ -62,8 +62,7 @@ class ValidationResult:
             # Duplicates found - check conflict level for appropriate icon
             has_errors = any(dup.conflict_level == "error" for dup in self.duplicates.values())
             icon = "❌" if has_errors else "⚠️"
-            status = "validation failed" if has_errors else "warnings only"
-            return f"{icon} Found {self.duplicate_count} vehicles assigned to multiple routes ({status})"
+            return f"{icon} Found {self.duplicate_count} vehicles assigned to multiple routes"
 
 
 class DuplicateVehicleValidator(BaseService):
@@ -147,17 +146,22 @@ class DuplicateVehicleValidator(BaseService):
 
         # Build assignment map
         for result in allocation_results:
+            # Skip invalid entries (None, non-dict, etc.)
+            if not isinstance(result, dict):
+                logger.warning(f"Skipping invalid allocation entry: {type(result).__name__}")
+                continue
+
             van_id = result.get("Van ID")
-            if not van_id:
+            if not van_id or not isinstance(van_id, str):
                 continue
 
             assignment = VehicleAssignment(
                 vehicle_id=van_id,
-                route_code=result.get("Route Code", "Unknown"),
-                driver_name=result.get("Associate Name", "N/A"),
-                service_type=result.get("Service Type", "Unknown"),
-                wave=result.get("Wave", "Unknown"),
-                staging_location=result.get("Staging Location", "Unknown"),
+                route_code=str(result.get("Route Code", "Unknown")),
+                driver_name=str(result.get("Associate Name", "N/A")),
+                service_type=str(result.get("Service Type", "Unknown")),
+                wave=str(result.get("Wave", "Unknown")),
+                staging_location=str(result.get("Staging Location", "Unknown")),
             )
 
             vehicle_assignments[van_id].append(assignment)
