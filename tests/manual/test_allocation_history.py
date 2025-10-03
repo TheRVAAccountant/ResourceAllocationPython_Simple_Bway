@@ -6,58 +6,57 @@ Tests that history is saved and retrieved correctly.
 
 from datetime import datetime
 from pathlib import Path
-from src.services.allocation_history_service import AllocationHistoryService
-from src.models.allocation import AllocationResult, AllocationStatus
+
 from loguru import logger
+
+from src.models.allocation import AllocationResult, AllocationStatus
+from src.services.allocation_history_service import AllocationHistoryService
+
 
 def test_history_service():
     """Test the allocation history service."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("ALLOCATION HISTORY SERVICE TEST")
-    print("="*80 + "\n")
-    
+    print("=" * 80 + "\n")
+
     # Initialize service
     print("1. Initializing AllocationHistoryService...")
     service = AllocationHistoryService()
     service.initialize()
     print("   ✓ Service initialized\n")
-    
+
     # Create mock allocation result
     print("2. Creating mock allocation result...")
     result = AllocationResult(
         request_id="test_" + datetime.now().strftime("%Y%m%d_%H%M%S"),
-        allocations={
-            "Test Driver": ["TEST123", "TEST456"]  # driver_id -> list of vehicle_ids
-        },
+        allocations={"Test Driver": ["TEST123", "TEST456"]},  # driver_id -> list of vehicle_ids
         unallocated_vehicles=["TEST789"],
         status=AllocationStatus.COMPLETED,
-        timestamp=datetime.now()
+        timestamp=datetime.now(),
     )
     print(f"   ✓ Created result with ID: {result.request_id}\n")
-    
+
     # Save to history
     print("3. Saving allocation to history...")
     try:
         service.save_allocation(
             result=result,
             engine_name="TestEngine",
-            files={
-                "test_input": "test_file.xlsx"
-            },
+            files={"test_input": "test_file.xlsx"},
             duplicate_conflicts=[],
-            error=None
+            error=None,
         )
         print("   ✓ Allocation saved successfully\n")
     except Exception as e:
         print(f"   ✗ Error saving allocation: {e}\n")
         return False
-    
+
     # Retrieve history
     print("4. Retrieving history...")
     try:
         history = service.get_history(limit=5)
         print(f"   ✓ Retrieved {len(history)} history entries\n")
-        
+
         if history:
             print("5. Latest allocation:")
             latest = history[0]
@@ -74,7 +73,7 @@ def test_history_service():
     except Exception as e:
         print(f"   ✗ Error retrieving history: {e}\n")
         return False
-    
+
     # Get statistics
     print("6. Getting statistics...")
     try:
@@ -89,7 +88,7 @@ def test_history_service():
     except Exception as e:
         print(f"   ✗ Error getting statistics: {e}\n")
         return False
-    
+
     # Check history file
     print("7. Verifying history file...")
     history_file = Path("config/allocation_history.json")
@@ -100,15 +99,16 @@ def test_history_service():
     else:
         print(f"   ✗ History file not found at {history_file}\n")
         return False
-    
-    print("="*80)
+
+    print("=" * 80)
     print("✓ ALL TESTS PASSED")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
     return True
+
 
 if __name__ == "__main__":
     logger.remove()  # Remove default handler
     logger.add(lambda msg: None)  # Suppress logs for cleaner output
-    
+
     success = test_history_service()
     exit(0 if success else 1)

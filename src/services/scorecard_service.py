@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
-import json
-import re
 
 import pdfplumber
 from loguru import logger
@@ -87,7 +87,10 @@ class ScorecardService:
         week_number = None
         year = None
 
-        pattern = re.compile(r"^(?P<dsp>.+?)\s+at\s+(?P<station>[A-Z0-9]+)(?:\s*-\s*Week\s+(?P<week>\d+))?", re.MULTILINE)
+        pattern = re.compile(
+            r"^(?P<dsp>.+?)\s+at\s+(?P<station>[A-Z0-9]+)(?:\s*-\s*Week\s+(?P<week>\d+))?",
+            re.MULTILINE,
+        )
 
         for page in pdf.pages:
             text = page.extract_text() or ""
@@ -183,13 +186,25 @@ class ScorecardService:
                 transporter_id=transporter_id,
                 overall_tier=(self._cell(row, column_names, "Overall Tier") or "").strip(),
                 delivered=self._parse_int(self._cell(row, column_names, "Delivered")),
-                key_focus_area=self._normalize_text(self._cell(row, column_names, "Key Focus Area")),
+                key_focus_area=self._normalize_text(
+                    self._cell(row, column_names, "Key Focus Area")
+                ),
                 fico_score=self._normalize_text(self._cell(row, column_names, "Fico Score")),
-                seatbelt_off_rate=self._parse_float(self._cell(row, column_names, "Seatbelt Off Rate")),
-                speeding_event_rate=self._parse_float(self._cell(row, column_names, "Speeding Event Rate")),
-                distractions_rate=self._parse_float(self._cell(row, column_names, "Distractions Rate")),
-                following_distance_rate=self._parse_float(self._cell(row, column_names, "Following Distance Rate")),
-                sign_signal_violations=self._parse_float(self._cell(row, column_names, "Sign/Signal Violations Rate")),
+                seatbelt_off_rate=self._parse_float(
+                    self._cell(row, column_names, "Seatbelt Off Rate")
+                ),
+                speeding_event_rate=self._parse_float(
+                    self._cell(row, column_names, "Speeding Event Rate")
+                ),
+                distractions_rate=self._parse_float(
+                    self._cell(row, column_names, "Distractions Rate")
+                ),
+                following_distance_rate=self._parse_float(
+                    self._cell(row, column_names, "Following Distance Rate")
+                ),
+                sign_signal_violations=self._parse_float(
+                    self._cell(row, column_names, "Sign/Signal Violations Rate")
+                ),
                 cdf_dpmo=self._parse_float(self._cell(row, column_names, "CDF DPMO")),
                 ced_dpmo=self._parse_float(self._cell(row, column_names, "CED")),
                 dcr_percent=self._parse_percent(self._cell(row, column_names, "DCR")),

@@ -1,33 +1,33 @@
 """Main GUI window for Resource Allocation System."""
 
-import sys
-import os
-from pathlib import Path
-from typing import Optional
 import json
+import os
+import sys
 import threading
+import tkinter as tk
 from datetime import datetime
+from pathlib import Path
+from tkinter import messagebox
+from typing import Optional
+
 import customtkinter as ctk
 from loguru import logger
-from tkinter import messagebox
-import tkinter as tk
 from PIL import Image, ImageTk
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.gui.dashboard_tab import DashboardTab
-from src.gui.allocation_tab import AllocationTab
-from src.gui.data_management_tab import DataManagementTab
-from src.gui.utils import WindowManager
-from src.gui.settings_tab import SettingsTab
-from src.gui.log_viewer_tab import LogViewerTab
 from src.core.allocation_engine import AllocationEngine
-from src.services.excel_service import ExcelService
+from src.gui.allocation_tab import AllocationTab
+from src.gui.dashboard_tab import DashboardTab
+from src.gui.data_management_tab import DataManagementTab
+from src.gui.log_viewer_tab import LogViewerTab
+from src.gui.settings_tab import SettingsTab
+from src.gui.utils import WindowManager
 from src.services.border_formatting_service import BorderFormattingService
 from src.services.dashboard_data_service import DashboardDataService
 from src.services.data_management_service import DataManagementService
-
+from src.services.excel_service import ExcelService
 
 # Set appearance mode and color theme
 ctk.set_appearance_mode("dark")  # Modes: "System", "Dark", "Light"
@@ -36,24 +36,24 @@ ctk.set_default_color_theme("blue")  # Themes: "blue", "green", "dark-blue"
 
 class ResourceAllocationGUI(ctk.CTk):
     """Main GUI application window."""
-    
+
     def __init__(self):
         """Initialize the main window."""
         super().__init__()
-        
+
         # Window configuration
         # Load company name from settings before setting titles
         self.company_name = self._read_company_name_from_settings()
         self.title(self._compose_app_title(self.company_name))
         self.geometry("1400x1000")
         self.minsize(1200, 900)
-        
+
         # Set application icons (title bar and taskbar/dock where supported)
         self._set_app_icons()
-        
+
         # Center window on screen
         self.center_window()
-        
+
         # Services
         self.allocation_engine = None
         self.excel_service = None
@@ -61,30 +61,30 @@ class ResourceAllocationGUI(ctk.CTk):
         self.dashboard_data_service = None
         self.data_management_service = None
         self.current_allocation_result = None
-        
+
         # Initialize services
         self.initialize_services()
-        
+
         # Setup UI
         self.setup_ui()
-        
+
         # Configure grid weights
         self.grid_rowconfigure(0, weight=0)  # Header
         self.grid_rowconfigure(1, weight=1)  # Main content
         self.grid_rowconfigure(2, weight=0)  # Status bar
         self.grid_columnconfigure(0, weight=1)
-        
+
         # Bind close event
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
+
         # Start status update thread
         self.update_status()
-        
+
         # Bring window to front
         self.after(100, self._bring_to_front)
-        
+
         logger.info("GUI Application initialized")
-    
+
     def center_window(self):
         """Center the window on the screen."""
         self.update_idletasks()
@@ -92,27 +92,27 @@ class ResourceAllocationGUI(ctk.CTk):
         height = 1000
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry(f'{width}x{height}+{x}+{y}')
-    
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
     def _bring_to_front(self):
         """Bring the window to front and focus it."""
         try:
             # Use WindowManager for cross-platform support
             WindowManager.bring_to_front(self)
-            
+
             # Ensure window is visible on screen
             WindowManager.ensure_visible(self)
-            
+
             # Make window urgent if it's not already in front
             if not self.focus_displayof():
                 WindowManager.make_window_urgent(self)
-                
+
         except Exception as e:
             logger.warning(f"Could not bring window to front: {e}")
             # Fallback to basic methods
             self.lift()
             self.focus_force()
-    
+
     def initialize_services(self):
         """Initialize backend services."""
         try:
@@ -122,10 +122,10 @@ class ResourceAllocationGUI(ctk.CTk):
                 "excel_visible": False,
                 "use_xlwings": False,  # Use openpyxl for GUI
             }
-            
+
             self.allocation_engine = AllocationEngine(config)
             self.allocation_engine.initialize()
-            
+
             self.excel_service = ExcelService(config)
             self.excel_service.initialize()
 
@@ -136,33 +136,33 @@ class ResourceAllocationGUI(ctk.CTk):
             self.dashboard_data_service = DashboardDataService()
             # Read-only data management data provider
             self.data_management_service = DataManagementService()
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize services: {e}")
             messagebox.showerror("Initialization Error", str(e))
-    
+
     def setup_ui(self):
         """Setup the user interface."""
         # Create header
         self.create_header()
-        
+
         # Create main content area with tabs
         self.create_main_content()
-        
+
         # Create status bar
         self.create_status_bar()
-    
+
     def create_header(self):
         """Create application header."""
         header_frame = ctk.CTkFrame(self, height=80, corner_radius=0)
         header_frame.grid(row=0, column=0, sticky="ew", padx=0, pady=0)
         header_frame.grid_columnconfigure(1, weight=1)
-        
+
         # Logo/Icon placeholder
         logo_frame = ctk.CTkFrame(header_frame, width=80, height=80, corner_radius=0)
         logo_frame.grid(row=0, column=0, padx=10, pady=10)
         logo_frame.grid_propagate(False)
-        
+
         # Load header icon image from high‑resolution assets where possible; fallback to emoji
         try:
             header_path = self._resolve_header_image_path()
@@ -173,37 +173,35 @@ class ResourceAllocationGUI(ctk.CTk):
             except Exception:
                 pil_img = pil_img.resize((64, 64))
             # Use a consistent displayed size for the header logo
-            self._header_ctk_image = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(48, 48))
+            self._header_ctk_image = ctk.CTkImage(
+                light_image=pil_img, dark_image=pil_img, size=(48, 48)
+            )
             logo_label = ctk.CTkLabel(logo_frame, text="", image=self._header_ctk_image)
             logo_label.place(relx=0.5, rely=0.5, anchor="center")
         except Exception as e:
             logger.warning(f"Falling back to emoji header icon: {e}")
-            logo_label = ctk.CTkLabel(
-                logo_frame,
-                text="📦",
-                font=ctk.CTkFont(size=40)
-            )
+            logo_label = ctk.CTkLabel(logo_frame, text="📦", font=ctk.CTkFont(size=40))
             logo_label.place(relx=0.5, rely=0.5, anchor="center")
-        
+
         # Title and subtitle
         title_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
         title_frame.grid(row=0, column=1, sticky="w", padx=20, pady=10)
-        
+
         self.title_label = ctk.CTkLabel(
             title_frame,
             text=self._compose_app_title(self.company_name),
-            font=ctk.CTkFont(size=28, weight="bold")
+            font=ctk.CTkFont(size=28, weight="bold"),
         )
         self.title_label.grid(row=0, column=0, sticky="w")
-        
+
         subtitle_label = ctk.CTkLabel(
             title_frame,
             text="Vehicle Fleet Management & Allocation",
             font=ctk.CTkFont(size=14),
-            text_color=("gray60", "gray40")
+            text_color=("gray60", "gray40"),
         )
         subtitle_label.grid(row=1, column=0, sticky="w")
-        
+
         # Theme toggle button
         self.appearance_mode_button = ctk.CTkButton(
             header_frame,
@@ -212,7 +210,7 @@ class ResourceAllocationGUI(ctk.CTk):
             height=40,
             corner_radius=20,
             command=self.toggle_appearance_mode,
-            font=ctk.CTkFont(size=20)
+            font=ctk.CTkFont(size=20),
         )
         self.appearance_mode_button.grid(row=0, column=2, padx=20, pady=20)
 
@@ -261,6 +259,7 @@ class ResourceAllocationGUI(ctk.CTk):
         # Fallback: convert ICO to a temporary PNG so Pillow can load cleanly
         try:
             import tempfile
+
             ico = self._resolve_icon_path()
             tmp_png = Path(tempfile.gettempdir()) / "resource_allocation_header.png"
             Image.open(ico).save(tmp_png, format="PNG")
@@ -316,6 +315,7 @@ class ResourceAllocationGUI(ctk.CTk):
 
                 try:
                     import ctypes
+
                     app_id = "com.resourceallocation.app"
                     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
                 except Exception as e:
@@ -325,6 +325,7 @@ class ResourceAllocationGUI(ctk.CTk):
                 # Prefer a high‑resolution icon for a crisp Dock image. Use AppKit if available.
                 try:
                     from AppKit import NSApplication, NSImage
+
                     project_root = Path(__file__).resolve().parent.parent.parent
                     icons = project_root / "assets" / "icons"
 
@@ -342,6 +343,7 @@ class ResourceAllocationGUI(ctk.CTk):
                     if icon_for_dock is None:
                         try:
                             import tempfile
+
                             tmp_png = Path(tempfile.gettempdir()) / "resource_allocation_icon.png"
                             pil.copy().save(tmp_png, format="PNG")
                             icon_for_dock = tmp_png
@@ -365,37 +367,37 @@ class ResourceAllocationGUI(ctk.CTk):
             logger.info("Application icons initialized")
         except Exception as e:
             logger.warning(f"Could not set application icons: {e}")
-    
+
     def create_main_content(self):
         """Create main content area with tabs."""
         main_frame = ctk.CTkFrame(self, corner_radius=0)
         main_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
         main_frame.grid_columnconfigure(0, weight=1)
         main_frame.grid_rowconfigure(0, weight=1)
-        
+
         # Create tabview
         self.tabview = ctk.CTkTabview(main_frame, corner_radius=10)
         self.tabview.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-        
+
         # Add tabs
         self.tabview.add("🏠 Dashboard")
         self.tabview.add("🚗 Allocation")
         self.tabview.add("📊 Data Management")
         self.tabview.add("📜 Logs")
         self.tabview.add("⚙️ Settings")
-        
+
         # Initialize tab contents
         self.dashboard_tab = DashboardTab(
             self.tabview.tab("🏠 Dashboard"),
             self.allocation_engine,
-            dashboard_data_service=self.dashboard_data_service
+            dashboard_data_service=self.dashboard_data_service,
         )
-        
+
         self.allocation_tab = AllocationTab(
             self.tabview.tab("🚗 Allocation"),
             self.allocation_engine,
             self.excel_service,
-            self.border_service
+            self.border_service,
         )
 
         # Allow dashboard to read the currently selected Daily Summary path
@@ -408,22 +410,20 @@ class ResourceAllocationGUI(ctk.CTk):
             )
         except Exception as e:
             logger.debug(f"Unable to wire Daily Summary getter to dashboard: {e}")
-        
+
         self.data_management_tab = DataManagementTab(
             self.tabview.tab("📊 Data Management"),
             self.excel_service,
-            data_service=self.data_management_service
+            data_service=self.data_management_service,
         )
-        
-        self.log_viewer_tab = LogViewerTab(
-            self.tabview.tab("📜 Logs")
-        )
-        
+
+        self.log_viewer_tab = LogViewerTab(self.tabview.tab("📜 Logs"))
+
         self.settings_tab = SettingsTab(
             self.tabview.tab("⚙️ Settings"),
             self.allocation_engine,
             self.excel_service,
-            on_settings_saved=self._on_settings_saved
+            on_settings_saved=self._on_settings_saved,
         )
 
         # Allow Data Management tab to read the Daily Summary path
@@ -431,6 +431,7 @@ class ResourceAllocationGUI(ctk.CTk):
             self.data_management_tab.set_daily_summary_path_getter(
                 lambda: self.allocation_tab.daily_summary_path.get()
             )
+
             # Provide allocated vehicles from most recent result (Allocation tab preferred)
             def _allocated_vehicles_getter():
                 try:
@@ -449,54 +450,48 @@ class ResourceAllocationGUI(ctk.CTk):
                 except Exception:
                     pass
                 return set()
+
             self.data_management_tab.set_allocated_vehicles_getter(_allocated_vehicles_getter)
         except Exception as e:
             logger.debug(f"Unable to wire Daily Summary getter to data tab: {e}")
-        
+
         # Set default tab
         self.tabview.set("🏠 Dashboard")
-    
+
     def create_status_bar(self):
         """Create status bar at bottom."""
         status_frame = ctk.CTkFrame(self, height=30, corner_radius=0)
         status_frame.grid(row=2, column=0, sticky="ew", padx=0, pady=0)
         status_frame.grid_columnconfigure(1, weight=1)
-        
+
         # Status indicator
         self.status_indicator = ctk.CTkLabel(
-            status_frame,
-            text="●",
-            font=ctk.CTkFont(size=12),
-            text_color="green"
+            status_frame, text="●", font=ctk.CTkFont(size=12), text_color="green"
         )
         self.status_indicator.grid(row=0, column=0, padx=(10, 5), pady=5)
-        
+
         # Status text
-        self.status_label = ctk.CTkLabel(
-            status_frame,
-            text="Ready",
-            font=ctk.CTkFont(size=12)
-        )
+        self.status_label = ctk.CTkLabel(status_frame, text="Ready", font=ctk.CTkFont(size=12))
         self.status_label.grid(row=0, column=1, sticky="w", padx=5, pady=5)
-        
+
         # Memory usage
         self.memory_label = ctk.CTkLabel(
             status_frame,
             text="Memory: -- MB",
             font=ctk.CTkFont(size=12),
-            text_color=("gray60", "gray40")
+            text_color=("gray60", "gray40"),
         )
         self.memory_label.grid(row=0, column=2, padx=10, pady=5)
-        
+
         # Time
         self.time_label = ctk.CTkLabel(
             status_frame,
             text=datetime.now().strftime("%H:%M:%S"),
             font=ctk.CTkFont(size=12),
-            text_color=("gray60", "gray40")
+            text_color=("gray60", "gray40"),
         )
         self.time_label.grid(row=0, column=3, padx=10, pady=5)
-    
+
     def toggle_appearance_mode(self):
         """Toggle between light and dark mode."""
         current_mode = ctk.get_appearance_mode()
@@ -538,61 +533,61 @@ class ResourceAllocationGUI(ctk.CTk):
     def _on_settings_saved(self, settings: dict):
         try:
             self.company_name = str(settings.get("company_name", "") or "")
-            logger.info(f"Applying settings from save: company_name='{self.company_name}', auto_open_results={settings.get('auto_open_results', False)}")
+            logger.info(
+                f"Applying settings from save: company_name='{self.company_name}', auto_open_results={settings.get('auto_open_results', False)}"
+            )
             self._apply_company_name(self.company_name)
             # Reflect auto-open preference in Allocation tab if present
             try:
                 if hasattr(self, "allocation_tab") and self.allocation_tab:
-                    self.allocation_tab.set_auto_open_results(bool(settings.get("auto_open_results", False)))
+                    self.allocation_tab.set_auto_open_results(
+                        bool(settings.get("auto_open_results", False))
+                    )
             except Exception as e:
                 logger.debug(f"Failed to propagate auto_open_results to allocation tab: {e}")
         except Exception as e:
             logger.debug(f"_on_settings_saved handler error: {e}")
-    
+
     def update_status(self):
         """Update status bar information."""
         try:
             # Update time
             self.time_label.configure(text=datetime.now().strftime("%H:%M:%S"))
-            
+
             # Update memory usage
             import psutil
+
             process = psutil.Process(os.getpid())
             memory_mb = process.memory_info().rss / 1024 / 1024
             self.memory_label.configure(text=f"Memory: {memory_mb:.1f} MB")
-            
+
             # Update dashboard if visible
             if self.tabview.get() == "🏠 Dashboard":
                 self.dashboard_tab.update_metrics()
-            
+
         except Exception as e:
             logger.error(f"Error updating status: {e}")
-        
+
         # Schedule next update
         self.after(1000, self.update_status)
-    
+
     def set_status(self, message: str, status_type: str = "info"):
         """Set status message.
-        
+
         Args:
             message: Status message to display.
             status_type: Type of status (info, success, warning, error).
         """
         self.status_label.configure(text=message)
-        
-        color_map = {
-            "info": "blue",
-            "success": "green",
-            "warning": "orange",
-            "error": "red"
-        }
-        
+
+        color_map = {"info": "blue", "success": "green", "warning": "orange", "error": "red"}
+
         color = color_map.get(status_type, "gray")
         self.status_indicator.configure(text_color=color)
-    
+
     def show_notification(self, title: str, message: str, notification_type: str = "info"):
         """Show notification to user.
-        
+
         Args:
             title: Notification title.
             message: Notification message.
@@ -606,7 +601,7 @@ class ResourceAllocationGUI(ctk.CTk):
             messagebox.showinfo(title, message)
         else:
             messagebox.showinfo(title, message)
-    
+
     def on_closing(self):
         """Handle window closing event."""
         if messagebox.askokcancel("Quit", "Do you want to quit?"):

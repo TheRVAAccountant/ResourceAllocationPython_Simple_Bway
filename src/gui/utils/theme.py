@@ -15,22 +15,22 @@ Color = Union[str, Tuple[str, str]]
 # Semantic accent colors for dashboard metrics
 ACCENTS: Dict[str, Tuple[str, str]] = {
     # Metrics
-    "total_vehicles": ("#1E3A8A", "#93C5FD"),       # deep blue / soft light blue
-    "total_drivers": ("#166534", "#86EFAC"),        # dark green / mint green
-    "allocated": ("#92400E", "#F59E0B"),            # brown-orange / amber
-    "allocation_rate": ("#6B21A8", "#D8B4FE"),      # deep purple / light purple
-    "unallocated": ("#991B1B", "#F87171"),          # dark red / light red
-    "avg_per_driver": ("#0E7490", "#67E8F9"),       # teal / light cyan
-    "processing_time": ("#374151", "#D1D5DB"),       # slate / light gray
-    "last_run": ("#9D174D", "#F9A8D4"),             # dark rose / light pink
+    "total_vehicles": ("#1E3A8A", "#93C5FD"),  # deep blue / soft light blue
+    "total_drivers": ("#166534", "#86EFAC"),  # dark green / mint green
+    "allocated": ("#92400E", "#F59E0B"),  # brown-orange / amber
+    "allocation_rate": ("#6B21A8", "#D8B4FE"),  # deep purple / light purple
+    "unallocated": ("#991B1B", "#F87171"),  # dark red / light red
+    "avg_per_driver": ("#0E7490", "#67E8F9"),  # teal / light cyan
+    "processing_time": ("#374151", "#D1D5DB"),  # slate / light gray
+    "last_run": ("#9D174D", "#F9A8D4"),  # dark rose / light pink
 }
 
 # Status indicator colors
 STATUS: Dict[str, Tuple[str, str]] = {
-    "active": ("#166534", "#22C55E"),    # dark green / emerald
+    "active": ("#166534", "#22C55E"),  # dark green / emerald
     "disabled": ("#92400E", "#F59E0B"),  # brown-orange / amber
     "inactive": ("#991B1B", "#EF4444"),  # dark red / red
-    "error": ("#991B1B", "#EF4444"),     # alias
+    "error": ("#991B1B", "#EF4444"),  # alias
 }
 
 DEFAULT_ACCENT: Tuple[str, str] = ("#2563EB", "#93C5FD")  # blue / light blue
@@ -61,4 +61,3 @@ def resolve_color(value: Color) -> Color:
         if value.lower() in STATUS:
             return STATUS[value.lower()]
     return value
-

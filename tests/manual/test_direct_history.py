@@ -4,8 +4,9 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from src.services.allocation_history_service import AllocationHistoryService
+
 from src.models.allocation import AllocationResult, AllocationStatus
+from src.services.allocation_history_service import AllocationHistoryService
 
 # Initialize service
 print("1. Initializing service...")
@@ -23,7 +24,7 @@ result = AllocationResult(
     allocations={"Driver1": ["V1", "V2"]},
     unallocated_vehicles=["V3"],
     status=AllocationStatus.COMPLETED,
-    timestamp=datetime.now()
+    timestamp=datetime.now(),
 )
 print(f"   - Result ID: {result.request_id}")
 print(f"   - Status: {result.status}")
@@ -36,12 +37,13 @@ try:
         engine_name="TestEngine",
         files={"test": "file.xlsx"},
         duplicate_conflicts=[],
-        error=None
+        error=None,
     )
     print("   ✓ Save completed")
 except Exception as e:
     print(f"   ✗ Save failed: {e}")
     import traceback
+
     traceback.print_exc()
 
 # Check file immediately

@@ -8,11 +8,11 @@ non-invasive and does not write to Excel files.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 from time import time
-import json
+from typing import Optional
 
 import pandas as pd
 from loguru import logger
@@ -102,4 +102,3 @@ class DataManagementService:
         except Exception as e:
             logger.debug(f"Vehicle Log not available or failed to read from {path}: {e}")
             return None
-

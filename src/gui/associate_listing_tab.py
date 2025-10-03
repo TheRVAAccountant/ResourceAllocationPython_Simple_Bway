@@ -5,16 +5,16 @@ from __future__ import annotations
 import csv
 import os
 import platform
-from datetime import datetime, date
+from datetime import date, datetime
+from tkinter import filedialog, messagebox, ttk
 from typing import List, Optional
 
 import customtkinter as ctk
-from tkinter import ttk, filedialog, messagebox
 from loguru import logger
 
+from src.gui.utils import HoverTooltip
 from src.models.associate import AssociateRecord
 from src.services.associate_service import AssociateService
-from src.gui.utils import HoverTooltip
 
 
 class AssociateListingTab:
@@ -84,9 +84,7 @@ class AssociateListingTab:
 
         # File path label
         self.file_label = ctk.CTkLabel(
-            controls_frame,
-            text="Associate CSV: (not set)",
-            font=ctk.CTkFont(size=12)
+            controls_frame, text="Associate CSV: (not set)", font=ctk.CTkFont(size=12)
         )
         self.file_label.grid(row=0, column=0, columnspan=5, sticky="w", pady=(10, 6))
 
@@ -377,7 +375,9 @@ class AssociateListingTab:
 
     def export_filtered(self) -> None:
         if not self.filtered_records:
-            messagebox.showinfo("No Data", "There are no associates to export with the current filters.")
+            messagebox.showinfo(
+                "No Data", "There are no associates to export with the current filters."
+            )
             return
 
         filename = filedialog.asksaveasfilename(
@@ -439,7 +439,9 @@ class AssociateListingTab:
             return
 
         interval_ms = max(1, self.refresh_interval_minutes) * 60_000
-        self._auto_refresh_job = self.parent.after(interval_ms, lambda: self.refresh_data(force=True))
+        self._auto_refresh_job = self.parent.after(
+            interval_ms, lambda: self.refresh_data(force=True)
+        )
 
     # ------------------------------------------------------------------
     # Utility helpers

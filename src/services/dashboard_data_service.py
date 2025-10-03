@@ -7,11 +7,11 @@ counts for the dashboard without altering any existing application flow.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 from time import time
-import json
+from typing import Optional
 
 import pandas as pd
 from loguru import logger
@@ -142,11 +142,18 @@ class DashboardDataService:
             return None
 
         try:
-            count = int(df[driver_col].dropna().astype(str).str.strip().replace({"": pd.NA}).dropna().nunique())
+            count = int(
+                df[driver_col]
+                .dropna()
+                .astype(str)
+                .str.strip()
+                .replace({"": pd.NA})
+                .dropna()
+                .nunique()
+            )
         except Exception as e:
             logger.debug(f"Driver count computation failed: {e}")
             return None
 
         self._drv_cache[str(p)] = _CacheEntry(value=count, timestamp=now)
         return count
-

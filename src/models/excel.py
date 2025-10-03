@@ -1,13 +1,14 @@
 """Excel-related data models."""
 
-from typing import Optional, Any
 from enum import Enum
+from typing import Any, Optional
+
 from pydantic import BaseModel, Field, validator
 
 
 class BorderStyle(str, Enum):
     """Excel border styles."""
-    
+
     NONE = "none"
     THIN = "thin"
     MEDIUM = "medium"
@@ -26,7 +27,7 @@ class BorderStyle(str, Enum):
 
 class HorizontalAlignment(str, Enum):
     """Excel horizontal alignment options."""
-    
+
     LEFT = "left"
     CENTER = "center"
     RIGHT = "right"
@@ -38,7 +39,7 @@ class HorizontalAlignment(str, Enum):
 
 class VerticalAlignment(str, Enum):
     """Excel vertical alignment options."""
-    
+
     TOP = "top"
     CENTER = "center"
     BOTTOM = "bottom"
@@ -48,18 +49,18 @@ class VerticalAlignment(str, Enum):
 
 class ExcelColor(BaseModel):
     """Represents an Excel color."""
-    
+
     rgb: Optional[str] = None  # Hex color like "FF0000"
     theme: Optional[int] = None  # Theme color index
     tint: Optional[float] = None  # Tint value (-1 to 1)
-    
+
     @validator("rgb")
     def validate_rgb(cls, v):
         """Validate RGB color format."""
         if v and not (len(v) == 6 and all(c in "0123456789ABCDEFabcdef" for c in v)):
             raise ValueError("RGB must be a 6-character hex string")
         return v.upper() if v else v
-    
+
     @validator("tint")
     def validate_tint(cls, v):
         """Validate tint value."""
@@ -70,7 +71,7 @@ class ExcelColor(BaseModel):
 
 class ExcelFont(BaseModel):
     """Represents Excel font settings."""
-    
+
     name: str = "Calibri"
     size: int = 11
     bold: bool = False
@@ -82,7 +83,7 @@ class ExcelFont(BaseModel):
 
 class ExcelBorder(BaseModel):
     """Represents Excel border settings."""
-    
+
     left: Optional[BorderStyle] = None
     right: Optional[BorderStyle] = None
     top: Optional[BorderStyle] = None
@@ -95,7 +96,7 @@ class ExcelBorder(BaseModel):
 
 class ExcelFill(BaseModel):
     """Represents Excel fill settings."""
-    
+
     pattern_type: str = "solid"
     fg_color: Optional[ExcelColor] = None
     bg_color: Optional[ExcelColor] = None
@@ -103,14 +104,14 @@ class ExcelFill(BaseModel):
 
 class ExcelAlignment(BaseModel):
     """Represents Excel alignment settings."""
-    
+
     horizontal: HorizontalAlignment = HorizontalAlignment.LEFT
     vertical: VerticalAlignment = VerticalAlignment.BOTTOM
     text_rotation: int = 0
     wrap_text: bool = False
     shrink_to_fit: bool = False
     indent: int = 0
-    
+
     @validator("text_rotation")
     def validate_rotation(cls, v):
         """Validate text rotation angle."""
@@ -121,7 +122,7 @@ class ExcelAlignment(BaseModel):
 
 class ExcelStyle(BaseModel):
     """Represents complete Excel cell style."""
-    
+
     font: Optional[ExcelFont] = None
     border: Optional[ExcelBorder] = None
     fill: Optional[ExcelFill] = None
@@ -133,44 +134,44 @@ class ExcelStyle(BaseModel):
 
 class ExcelRange(BaseModel):
     """Represents an Excel range."""
-    
+
     sheet_name: str
     start_row: int = Field(ge=1)
     start_col: int = Field(ge=1)
     end_row: int = Field(ge=1)
     end_col: int = Field(ge=1)
-    
+
     @validator("end_row")
     def validate_end_row(cls, v, values):
         """Validate end row is not before start row."""
         if "start_row" in values and v < values["start_row"]:
             raise ValueError("End row cannot be before start row")
         return v
-    
+
     @validator("end_col")
     def validate_end_col(cls, v, values):
         """Validate end column is not before start column."""
         if "start_col" in values and v < values["start_col"]:
             raise ValueError("End column cannot be before start column")
         return v
-    
+
     def to_excel_range(self) -> str:
         """Convert to Excel range notation (e.g., 'A1:C10').
-        
+
         Returns:
             Excel range string.
         """
         start_col_letter = self._col_to_letter(self.start_col)
         end_col_letter = self._col_to_letter(self.end_col)
         return f"{start_col_letter}{self.start_row}:{end_col_letter}{self.end_row}"
-    
+
     @staticmethod
     def _col_to_letter(col_num: int) -> str:
         """Convert column number to Excel letter.
-        
+
         Args:
             col_num: Column number (1-based).
-        
+
         Returns:
             Excel column letter(s).
         """
@@ -180,43 +181,43 @@ class ExcelRange(BaseModel):
             result = chr(65 + col_num % 26) + result
             col_num //= 26
         return result
-    
+
     @staticmethod
     def from_excel_range(sheet_name: str, range_str: str) -> "ExcelRange":
         """Create from Excel range notation.
-        
+
         Args:
             sheet_name: Name of the worksheet.
             range_str: Excel range string (e.g., 'A1:C10').
-        
+
         Returns:
             ExcelRange instance.
         """
         import re
-        
+
         pattern = r"([A-Z]+)(\d+):([A-Z]+)(\d+)"
         match = re.match(pattern, range_str.upper())
-        
+
         if not match:
             raise ValueError(f"Invalid Excel range: {range_str}")
-        
+
         start_col_letter, start_row, end_col_letter, end_row = match.groups()
-        
+
         return ExcelRange(
             sheet_name=sheet_name,
             start_row=int(start_row),
             start_col=ExcelRange._letter_to_col(start_col_letter),
             end_row=int(end_row),
-            end_col=ExcelRange._letter_to_col(end_col_letter)
+            end_col=ExcelRange._letter_to_col(end_col_letter),
         )
-    
+
     @staticmethod
     def _letter_to_col(col_letter: str) -> int:
         """Convert Excel column letter to number.
-        
+
         Args:
             col_letter: Excel column letter(s).
-        
+
         Returns:
             Column number (1-based).
         """
@@ -228,7 +229,7 @@ class ExcelRange(BaseModel):
 
 class ExcelWorksheet(BaseModel):
     """Represents an Excel worksheet."""
-    
+
     name: str
     tab_color: Optional[ExcelColor] = None
     hidden: bool = False
@@ -238,7 +239,7 @@ class ExcelWorksheet(BaseModel):
     print_area: Optional[ExcelRange] = None
     row_heights: dict[int, float] = Field(default_factory=dict)
     column_widths: dict[int, float] = Field(default_factory=dict)
-    
+
     @validator("name")
     def validate_name(cls, v):
         """Validate worksheet name."""
@@ -248,7 +249,7 @@ class ExcelWorksheet(BaseModel):
         if len(v) > 31:
             raise ValueError("Worksheet name cannot exceed 31 characters")
         return v
-    
+
     @validator("zoom")
     def validate_zoom(cls, v):
         """Validate zoom level."""
@@ -259,11 +260,11 @@ class ExcelWorksheet(BaseModel):
 
 class ExcelFormula(BaseModel):
     """Represents an Excel formula."""
-    
+
     formula: str
     is_array: bool = False
     range: Optional[ExcelRange] = None
-    
+
     @validator("formula")
     def validate_formula(cls, v):
         """Validate formula starts with =."""
@@ -274,7 +275,7 @@ class ExcelFormula(BaseModel):
 
 class ExcelValidation(BaseModel):
     """Represents Excel data validation."""
-    
+
     type: str  # "list", "whole", "decimal", "date", "time", "textLength", "custom"
     operator: str = "between"  # "between", "notBetween", "equal", "notEqual", "greaterThan", etc.
     formula1: Optional[str] = None

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import sys
 from datetime import date, timedelta
 from pathlib import Path
-import sys
 
 import pandas as pd
 
@@ -56,7 +56,9 @@ def test_associate_service_parses_csv(tmp_path):
     csv_path = tmp_path / "associates.csv"
     _write_sample_csv(csv_path, today=today)
 
-    service = AssociateService(settings={"associate_data_path": str(csv_path)}, expiration_warning_days=90)
+    service = AssociateService(
+        settings={"associate_data_path": str(csv_path)}, expiration_warning_days=90
+    )
     records = service.load_associates()
 
     assert len(records) == 2

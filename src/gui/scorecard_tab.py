@@ -8,15 +8,15 @@ import platform
 from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
 from typing import List, Optional
 
 import customtkinter as ctk
-from tkinter import ttk, filedialog, messagebox
 from loguru import logger
 
+from src.gui.widgets.recent_file_selector import RecentFileSelector
 from src.models.scorecard import DAWeeklyPerformance, ScorecardMetadata
 from src.services.scorecard_service import ScorecardData, ScorecardService
-from src.gui.widgets.recent_file_selector import RecentFileSelector
 from src.utils.recent_files_manager import FileFieldType
 
 
@@ -181,7 +181,11 @@ class ScorecardTab:
 
         for col_id, heading, width in self.columns:
             self.tree.heading(col_id, text=heading)
-            anchor = "center" if col_id not in {"name", "transporter_id", "key_focus_area", "psb_status"} else "w"
+            anchor = (
+                "center"
+                if col_id not in {"name", "transporter_id", "key_focus_area", "psb_status"}
+                else "w"
+            )
             self.tree.column(col_id, width=width, anchor=anchor)
 
         v_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
@@ -373,7 +377,9 @@ class ScorecardTab:
                 writer.writeheader()
                 for row in self.filtered_rows:
                     writer.writerow(asdict(row))
-            messagebox.showinfo("Export Complete", f"Exported {len(self.filtered_rows)} rows to {filename}")
+            messagebox.showinfo(
+                "Export Complete", f"Exported {len(self.filtered_rows)} rows to {filename}"
+            )
         except Exception as exc:
             logger.error(f"Failed to export scorecard data: {exc}")
             messagebox.showerror("Export Failed", f"Could not export data:\n{exc}")

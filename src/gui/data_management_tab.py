@@ -1,20 +1,21 @@
 """Data management tab for Resource Allocation GUI."""
 
-import customtkinter as ctk
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, StringVar
-import pandas as pd
-from typing import Optional
-from loguru import logger
 import threading
+import tkinter as tk
+from tkinter import StringVar, filedialog, messagebox, ttk
+from typing import Optional
+
+import customtkinter as ctk
+import pandas as pd
+from loguru import logger
 
 
 class DataManagementTab:
     """Data management tab implementation."""
-    
+
     def __init__(self, parent, excel_service, data_service=None):
         """Initialize data management tab.
-        
+
         Args:
             parent: Parent widget.
             excel_service: Reference to Excel service.
@@ -22,57 +23,55 @@ class DataManagementTab:
         self.parent = parent
         self.excel_service = excel_service
         self.data_service = data_service
-        
+
         self.current_data = {"vehicles": None, "drivers": None}
         self.current_file = None
         self._daily_summary_path_getter = None
         self.source_var = StringVar(value="Daily Summary (Vehicle Status)")
-        
+
         # Configure grid
         self.parent.grid_columnconfigure(0, weight=1)
         self.parent.grid_rowconfigure(1, weight=1)
-        
+
         # Create UI elements
         self.setup_ui()
-    
+
     def setup_ui(self):
         """Setup data management UI."""
         # Header with file controls
         self.create_header()
-        
+
         # Create notebook for vehicles and drivers
         self.notebook = ctk.CTkTabview(self.parent)
         self.notebook.grid(row=1, column=0, sticky="nsew", padx=20, pady=10)
-        
+
         # Add tabs
         self.notebook.add("Vehicles")
         self.notebook.add("Drivers")
-        
+
         # Create data tables
         self.create_vehicles_tab()
         self.create_drivers_tab()
-        
+
         # Action buttons
         self.create_action_buttons()
-    
+
     def create_header(self):
         """Create header with file controls."""
         header_frame = ctk.CTkFrame(self.parent, fg_color="transparent")
         header_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 10))
         header_frame.grid_columnconfigure(1, weight=1)
-        
+
         # Title
         title_label = ctk.CTkLabel(
-            header_frame,
-            text="Data Management",
-            font=ctk.CTkFont(size=24, weight="bold")
+            header_frame, text="Data Management", font=ctk.CTkFont(size=24, weight="bold")
         )
         title_label.grid(row=0, column=0, sticky="w")
-        
+
         # File controls
         file_controls = ctk.CTkFrame(header_frame, fg_color="transparent")
         file_controls.grid(row=0, column=1, sticky="e")
-        
+
         # Source selector
         source_label = ctk.CTkLabel(file_controls, text="Source:")
         source_label.grid(row=0, column=0, padx=(0, 5))
@@ -80,82 +79,85 @@ class DataManagementTab:
         self.source_menu = ctk.CTkOptionMenu(
             file_controls,
             variable=self.source_var,
-            values=["Daily Summary (Vehicle Status)", "Custom Workbook (Vehicles)"]
+            values=["Daily Summary (Vehicle Status)", "Custom Workbook (Vehicles)"],
         )
         self.source_menu.grid(row=0, column=1, padx=(0, 10))
 
         self.load_button = ctk.CTkButton(
-            file_controls,
-            text="📂 Load Data",
-            width=120,
-            command=self.load_data
+            file_controls, text="📂 Load Data", width=120, command=self.load_data
         )
         self.load_button.grid(row=0, column=2, padx=5)
-        
+
         self.save_button = ctk.CTkButton(
-            file_controls,
-            text="💾 Save Data",
-            width=120,
-            state="disabled",
-            command=self.save_data
+            file_controls, text="💾 Save Data", width=120, state="disabled", command=self.save_data
         )
         self.save_button.grid(row=0, column=3, padx=5)
-        
+
         self.new_button = ctk.CTkButton(
-            file_controls,
-            text="➕ New Dataset",
-            width=120,
-            command=self.new_dataset
+            file_controls, text="➕ New Dataset", width=120, command=self.new_dataset
         )
         self.new_button.grid(row=0, column=4, padx=5)
-    
+
     def create_vehicles_tab(self):
         """Create vehicles data table."""
         vehicles_tab = self.notebook.tab("Vehicles")
         vehicles_tab.grid_columnconfigure(0, weight=1)
         vehicles_tab.grid_rowconfigure(1, weight=1)
-        
+
         # Toolbar
         toolbar = self.create_toolbar(vehicles_tab, "vehicle")
         toolbar.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
-        
+
         # Create treeview with scrollbars
         tree_frame = ctk.CTkFrame(vehicles_tab)
         tree_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
         tree_frame.grid_columnconfigure(0, weight=1)
         tree_frame.grid_rowconfigure(0, weight=1)
-        
+
         # Treeview
         columns = ("ID", "Vehicle Number", "Type", "Location", "Status", "Priority", "Capacity")
         self.vehicles_columns_base = columns
-        self.vehicles_columns_enriched = ("ID", "Vehicle Number", "Type", "Location", "Status", "Priority", "Capacity", "VIN", "GeoTab", "Brand/Rental")
+        self.vehicles_columns_enriched = (
+            "ID",
+            "Vehicle Number",
+            "Type",
+            "Location",
+            "Status",
+            "Priority",
+            "Capacity",
+            "VIN",
+            "GeoTab",
+            "Brand/Rental",
+        )
         self._vehicle_enriched = False
         self.vehicles_tree = ttk.Treeview(
-            tree_frame,
-            columns=columns,
-            show="tree headings",
-            selectmode="extended"
+            tree_frame, columns=columns, show="tree headings", selectmode="extended"
         )
         self.vehicles_tree.grid(row=0, column=0, sticky="nsew")
-        
+
         self._configure_vehicle_columns(enriched=False)
-        
+
         # Scrollbars
         # Scrollbars
         v_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.vehicles_tree.yview)
         v_scrollbar.grid(row=0, column=1, sticky="ns")
+
         # Wrap yscroll/xscroll to update overlays
         def _yset(*args):
             v_scrollbar.set(*args)
             self._update_vehicle_status_overlays()
-        
+
         self.vehicles_tree.configure(yscrollcommand=_yset)
-        
-        h_scrollbar = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.vehicles_tree.xview)
+
+        h_scrollbar = ttk.Scrollbar(
+            tree_frame, orient="horizontal", command=self.vehicles_tree.xview
+        )
         h_scrollbar.grid(row=1, column=0, sticky="ew")
+
         def _xset(*args):
             h_scrollbar.set(*args)
             self._update_vehicle_status_overlays()
+
         self.vehicles_tree.configure(xscrollcommand=_xset)
 
         # Statistics panel
@@ -171,34 +173,42 @@ class DataManagementTab:
         self._veh_status_labels: dict[str, tk.Label] = {}
         # Keep overlays in sync on resize/config
         self.vehicles_tree.bind("<Configure>", lambda e: self._update_vehicle_status_overlays())
-        self.vehicles_tree.bind("<<TreeviewSelect>>", lambda e: self._update_vehicle_status_overlays())
-    
+        self.vehicles_tree.bind(
+            "<<TreeviewSelect>>", lambda e: self._update_vehicle_status_overlays()
+        )
+
     def create_drivers_tab(self):
         """Create drivers data table."""
         drivers_tab = self.notebook.tab("Drivers")
         drivers_tab.grid_columnconfigure(0, weight=1)
         drivers_tab.grid_rowconfigure(1, weight=1)
-        
+
         # Toolbar
         toolbar = self.create_toolbar(drivers_tab, "driver")
         toolbar.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 5))
-        
+
         # Create treeview with scrollbars
         tree_frame = ctk.CTkFrame(drivers_tab)
         tree_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
         tree_frame.grid_columnconfigure(0, weight=1)
         tree_frame.grid_rowconfigure(0, weight=1)
-        
+
         # Treeview
-        columns = ("ID", "Employee ID", "Name", "Location", "Status", "Priority", "Experience", "License Type")
+        columns = (
+            "ID",
+            "Employee ID",
+            "Name",
+            "Location",
+            "Status",
+            "Priority",
+            "Experience",
+            "License Type",
+        )
         self.drivers_tree = ttk.Treeview(
-            tree_frame,
-            columns=columns,
-            show="tree headings",
-            selectmode="extended"
+            tree_frame, columns=columns, show="tree headings", selectmode="extended"
         )
         self.drivers_tree.grid(row=0, column=0, sticky="nsew")
-        
+
         # Configure columns
         self.drivers_tree.heading("#0", text="")
         self.drivers_tree.heading("ID", text="ID")
@@ -209,7 +219,7 @@ class DataManagementTab:
         self.drivers_tree.heading("Priority", text="Priority")
         self.drivers_tree.heading("Experience", text="Experience")
         self.drivers_tree.heading("License Type", text="License Type")
-        
+
         # Column widths
         self.drivers_tree.column("#0", width=0, stretch=False)
         self.drivers_tree.column("ID", width=50)
@@ -220,158 +230,138 @@ class DataManagementTab:
         self.drivers_tree.column("Priority", width=80)
         self.drivers_tree.column("Experience", width=80)
         self.drivers_tree.column("License Type", width=100)
-        
+
         # Scrollbars
         v_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.drivers_tree.yview)
         v_scrollbar.grid(row=0, column=1, sticky="ns")
         self.drivers_tree.configure(yscrollcommand=v_scrollbar.set)
-        
-        h_scrollbar = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.drivers_tree.xview)
+
+        h_scrollbar = ttk.Scrollbar(
+            tree_frame, orient="horizontal", command=self.drivers_tree.xview
+        )
         h_scrollbar.grid(row=1, column=0, sticky="ew")
         self.drivers_tree.configure(xscrollcommand=h_scrollbar.set)
-        
+
         # Statistics panel
         self.create_statistics_panel(drivers_tab, "drivers")
-    
+
     def create_toolbar(self, parent, data_type: str):
         """Create toolbar for data operations.
-        
+
         Args:
             parent: Parent widget.
             data_type: Type of data (vehicle or driver).
-        
+
         Returns:
             Toolbar frame.
         """
         toolbar = ctk.CTkFrame(parent, height=40, fg_color="transparent")
-        
+
         # Add button
         add_button = ctk.CTkButton(
             toolbar,
             text=f"➕ Add {data_type.title()}",
             width=120,
-            command=lambda: self.add_item(data_type)
+            command=lambda: self.add_item(data_type),
         )
         add_button.grid(row=0, column=0, padx=5)
-        
+
         # Edit button
         edit_button = ctk.CTkButton(
-            toolbar,
-            text="✏️ Edit",
-            width=80,
-            command=lambda: self.edit_item(data_type)
+            toolbar, text="✏️ Edit", width=80, command=lambda: self.edit_item(data_type)
         )
         edit_button.grid(row=0, column=1, padx=5)
 
         # Delete button
         delete_button = ctk.CTkButton(
-            toolbar,
-            text="🗑️ Delete",
-            width=80,
-            command=lambda: self.delete_item(data_type)
+            toolbar, text="🗑️ Delete", width=80, command=lambda: self.delete_item(data_type)
         )
         delete_button.grid(row=0, column=2, padx=5)
 
         # Details button (vehicles only)
         if data_type == "vehicle":
             details_button = ctk.CTkButton(
-                toolbar,
-                text="ℹ️ Details",
-                width=90,
-                command=self.show_vehicle_details
+                toolbar, text="ℹ️ Details", width=90, command=self.show_vehicle_details
             )
             details_button.grid(row=0, column=3, padx=(10, 5))
-        
+
         # Search entry
         search_label = ctk.CTkLabel(toolbar, text="Search:")
         search_label.grid(row=0, column=4, padx=(20, 5))
-        
+
         search_entry = ctk.CTkEntry(toolbar, width=200, placeholder_text=f"Search {data_type}s...")
         search_entry.grid(row=0, column=5, padx=5)
-        search_entry.bind("<KeyRelease>", lambda e: self.search_items(data_type, search_entry.get()))
-        
+        search_entry.bind(
+            "<KeyRelease>", lambda e: self.search_items(data_type, search_entry.get())
+        )
+
         # Import/Export buttons
         import_button = ctk.CTkButton(
-            toolbar,
-            text="📥 Import",
-            width=80,
-            command=lambda: self.import_data(data_type)
+            toolbar, text="📥 Import", width=80, command=lambda: self.import_data(data_type)
         )
         import_button.grid(row=0, column=6, padx=(20, 5))
-        
+
         export_button = ctk.CTkButton(
-            toolbar,
-            text="📤 Export",
-            width=80,
-            command=lambda: self.export_data(data_type)
+            toolbar, text="📤 Export", width=80, command=lambda: self.export_data(data_type)
         )
         export_button.grid(row=0, column=7, padx=5)
-        
+
         return toolbar
-    
+
     def create_statistics_panel(self, parent, data_type: str):
         """Create statistics panel.
-        
+
         Args:
             parent: Parent widget.
             data_type: Type of data (vehicles or drivers).
         """
         stats_frame = ctk.CTkFrame(parent)
         stats_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=(5, 10))
-        
+
         # Statistics labels
         if data_type == "vehicles":
             self.vehicles_stats_label = ctk.CTkLabel(
                 stats_frame,
                 text="Total: 0 | Available: 0 | In Use: 0 | Maintenance: 0",
-                font=ctk.CTkFont(size=12)
+                font=ctk.CTkFont(size=12),
             )
             self.vehicles_stats_label.grid(row=0, column=0, padx=10, pady=5)
         else:
             self.drivers_stats_label = ctk.CTkLabel(
                 stats_frame,
                 text="Total: 0 | Active: 0 | Inactive: 0 | Average Experience: 0 years",
-                font=ctk.CTkFont(size=12)
+                font=ctk.CTkFont(size=12),
             )
             self.drivers_stats_label.grid(row=0, column=0, padx=10, pady=5)
-    
+
     def create_action_buttons(self):
         """Create action buttons at bottom."""
         button_frame = ctk.CTkFrame(self.parent, fg_color="transparent")
         button_frame.grid(row=2, column=0, sticky="ew", padx=20, pady=(10, 20))
         button_frame.grid_columnconfigure(0, weight=1)
-        
+
         # Button container
         button_container = ctk.CTkFrame(button_frame, fg_color="transparent")
         button_container.grid(row=0, column=0)
-        
+
         # Refresh button
         refresh_button = ctk.CTkButton(
-            button_container,
-            text="🔄 Refresh",
-            width=100,
-            command=self.refresh_data
+            button_container, text="🔄 Refresh", width=100, command=self.refresh_data
         )
         refresh_button.grid(row=0, column=0, padx=5)
-        
+
         # Validate button
         validate_button = ctk.CTkButton(
-            button_container,
-            text="✓ Validate",
-            width=100,
-            command=self.validate_data
+            button_container, text="✓ Validate", width=100, command=self.validate_data
         )
         validate_button.grid(row=0, column=1, padx=5)
-        
+
         # Generate sample button
         sample_button = ctk.CTkButton(
-            button_container,
-            text="📝 Generate Sample",
-            width=130,
-            command=self.generate_sample_data
+            button_container, text="📝 Generate Sample", width=130, command=self.generate_sample_data
         )
         sample_button.grid(row=0, column=2, padx=5)
-    
+
     def load_data(self):
         """Load data from Excel file."""
         selected_source = self.source_var.get()
@@ -383,7 +373,7 @@ class DataManagementTab:
                 # Prompt for file and remember selection via settings if desired
                 ds_path = filedialog.askopenfilename(
                     title="Select Daily Summary Log",
-                    filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")]
+                    filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")],
                 )
                 if not ds_path:
                     return
@@ -414,8 +404,12 @@ class DataManagementTab:
                                     continue
                                 self._vehicle_details[vid] = {
                                     "VIN": str(r.get(vin_col, "") or "").strip() if vin_col else "",
-                                    "GeoTab": str(r.get(geo_col, "") or "").strip() if geo_col else "",
-                                    "Branded/Rental": str(r.get(brand_col, "") or "").strip() if brand_col else "",
+                                    "GeoTab": str(r.get(geo_col, "") or "").strip()
+                                    if geo_col
+                                    else "",
+                                    "Branded/Rental": str(r.get(brand_col, "") or "").strip()
+                                    if brand_col
+                                    else "",
                                 }
                     except Exception as e:
                         logger.debug(f"Vehicle Log enrichment skipped: {e}")
@@ -437,7 +431,7 @@ class DataManagementTab:
         # Legacy: custom workbook path with Vehicles/Drivers sheets
         filename = filedialog.askopenfilename(
             title="Load Data File",
-            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")]
+            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")],
         )
         if not filename:
             return
@@ -473,7 +467,7 @@ class DataManagementTab:
         if self.data_service:
             return self.data_service.resolve_daily_summary_path(None)
         return None
-    
+
     def save_data(self):
         """Save data to Excel file."""
         try:
@@ -483,10 +477,12 @@ class DataManagementTab:
 
             # Ensure outputs directory
             from pathlib import Path
+
             outputs_dir = Path("outputs")
             outputs_dir.mkdir(parents=True, exist_ok=True)
 
             from datetime import datetime
+
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             export_path = outputs_dir / f"vehicles_export_{ts}.xlsx"
 
@@ -501,7 +497,7 @@ class DataManagementTab:
         except Exception as e:
             logger.error(f"Save export failed: {e}")
             messagebox.showerror("Save Error", str(e))
-    
+
     def new_dataset(self):
         """Create new dataset."""
         # Clear current data
@@ -509,9 +505,9 @@ class DataManagementTab:
         self.drivers_tree.delete(*self.drivers_tree.get_children())
         self.current_file = None
         self.save_button.configure(state="disabled")
-        
+
         logger.info("New dataset created")
-    
+
     def populate_vehicles_tree(self, df: pd.DataFrame):
         """Populate vehicles treeview with data.
 
@@ -539,14 +535,16 @@ class DataManagementTab:
         else:
             # Legacy Vehicles sheet
             for _, row in df.iterrows():
-                rows.append((
-                    str(row.get("Vehicle Number", "") or "").strip(),
-                    str(row.get("Type", "") or "").strip(),
-                    str(row.get("Location", "") or "").strip(),
-                    str(row.get("Status", "") or "").strip(),
-                    row.get("Priority", ""),
-                    row.get("Capacity", "")
-                ))
+                rows.append(
+                    (
+                        str(row.get("Vehicle Number", "") or "").strip(),
+                        str(row.get("Type", "") or "").strip(),
+                        str(row.get("Location", "") or "").strip(),
+                        str(row.get("Status", "") or "").strip(),
+                        row.get("Priority", ""),
+                        row.get("Capacity", ""),
+                    )
+                )
 
         # Persist current dataset for validation/export
         self.current_data["vehicles"] = df.copy()
@@ -561,7 +559,11 @@ class DataManagementTab:
 
         for idx, (veh, vtype, loc, status, prio, cap) in enumerate(rows, start=1):
             if self._vehicle_enriched:
-                det = self._vehicle_details.get(str(veh), {}) if hasattr(self, "_vehicle_details") else {}
+                det = (
+                    self._vehicle_details.get(str(veh), {})
+                    if hasattr(self, "_vehicle_details")
+                    else {}
+                )
                 vin = det.get("VIN", "")
                 geo = det.get("GeoTab", "")
                 brand = det.get("Branded/Rental", "")
@@ -621,7 +623,13 @@ class DataManagementTab:
                 status_text = str(vals[4])
                 if not status_text:
                     continue
-                color = "#34d058" if status_text.lower() == "available" else "#ff6b6b" if status_text.lower() == "unavailable" else None
+                color = (
+                    "#34d058"
+                    if status_text.lower() == "available"
+                    else "#ff6b6b"
+                    if status_text.lower() == "unavailable"
+                    else None
+                )
                 if not color:
                     continue
                 # Create an overlay label only covering the Status cell
@@ -634,11 +642,17 @@ class DataManagementTab:
                     borderwidth=0,
                     padx=4,
                     pady=0,
-                    anchor="w"
+                    anchor="w",
                 )
-                lbl.place(x=x+2, y=y+1, width=w-4, height=h-2)
+                lbl.place(x=x + 2, y=y + 1, width=w - 4, height=h - 2)
                 # Forward clicks to tree for normal behavior
-                for seq in ("<Button-1>", "<Double-Button-1>", "<B1-Motion>", "<ButtonRelease-1>", "<MouseWheel>"):
+                for seq in (
+                    "<Button-1>",
+                    "<Double-Button-1>",
+                    "<B1-Motion>",
+                    "<ButtonRelease-1>",
+                    "<MouseWheel>",
+                ):
                     lbl.bind(seq, lambda e, s=seq: self._forward_event_to_tree_with_seq(e, s))
                 self._veh_status_labels[item] = lbl
         except Exception:
@@ -649,7 +663,9 @@ class DataManagementTab:
         """Return (fieldbackground, selectbackground) from ttk style with fallbacks."""
         try:
             style = ttk.Style(self.vehicles_tree)
-            field_bg = style.lookup("Treeview", "fieldbackground") or style.lookup("Treeview", "background")
+            field_bg = style.lookup("Treeview", "fieldbackground") or style.lookup(
+                "Treeview", "background"
+            )
             select_bg = style.lookup("Treeview", "selectbackground")
             # Fallbacks
             if not field_bg:
@@ -708,12 +724,12 @@ class DataManagementTab:
             return len(vehicle_ids & allocated)
         except Exception:
             return 0
-    
+
     def populate_drivers_tree(self, df: pd.DataFrame):
         """Populate drivers treeview with data."""
         # Clear existing data
         self.drivers_tree.delete(*self.drivers_tree.get_children())
-        
+
         # Add data
         for idx, row in df.iterrows():
             values = (
@@ -724,10 +740,10 @@ class DataManagementTab:
                 row.get("Status", ""),
                 row.get("Priority", ""),
                 row.get("Experience", ""),
-                row.get("License Type", "")
+                row.get("License Type", ""),
             )
             self.drivers_tree.insert("", "end", values=values)
-        
+
         # Update statistics
         total = len(df)
         active = len(df[df.get("Status", "") == "active"]) if "Status" in df else 0
@@ -735,32 +751,32 @@ class DataManagementTab:
         self.drivers_stats_label.configure(
             text=f"Total: {total} | Active: {active} | Inactive: {total - active} | Average Experience: {avg_exp:.1f} years"
         )
-    
+
     def add_item(self, data_type: str):
         """Add new item."""
         # This would open a dialog to add new vehicle or driver
         logger.info(f"Add {data_type} requested")
-    
+
     def edit_item(self, data_type: str):
         """Edit selected item."""
         # This would open a dialog to edit selected item
         logger.info(f"Edit {data_type} requested")
-    
+
     def delete_item(self, data_type: str):
         """Delete selected items."""
         tree = self.vehicles_tree if data_type == "vehicle" else self.drivers_tree
         selected = tree.selection()
-        
+
         if selected:
             if messagebox.askyesno("Confirm Delete", f"Delete {len(selected)} {data_type}(s)?"):
                 for item in selected:
                     tree.delete(item)
                 logger.info(f"Deleted {len(selected)} {data_type}(s)")
-    
+
     def search_items(self, data_type: str, search_text: str):
         """Search and filter items."""
         tree = self.vehicles_tree if data_type == "vehicle" else self.drivers_tree
-        
+
         # Simple search: toggle 'hidden' tag while preserving status tags
         for item in tree.get_children():
             values = tree.item(item)["values"]
@@ -771,26 +787,26 @@ class DataManagementTab:
             else:
                 existing.add("hidden")
             tree.item(item, tags=tuple(existing))
-    
+
     def import_data(self, data_type: str):
         """Import data from CSV."""
         filename = filedialog.askopenfilename(
             title=f"Import {data_type.title()}s",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
         )
-        
+
         if filename:
             # Import logic here
             logger.info(f"Imported {data_type}s from: {filename}")
-    
+
     def export_data(self, data_type: str):
         """Export data to CSV."""
         filename = filedialog.asksaveasfilename(
             title=f"Export {data_type.title()}s",
             defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
         )
-        
+
         if filename:
             try:
                 if data_type == "vehicle":
@@ -802,14 +818,16 @@ class DataManagementTab:
                             continue
                         _, veh_num, vtype, _loc, status, _prio, _cap = vals
                         details = getattr(self, "_vehicle_details", {}).get(str(veh_num), {})
-                        rows.append({
-                            "Vehicle Number": veh_num,
-                            "Type": vtype,
-                            "Status": status,
-                            "VIN": details.get("VIN", ""),
-                            "GeoTab": details.get("GeoTab", ""),
-                            "Branded/Rental": details.get("Branded/Rental", ""),
-                        })
+                        rows.append(
+                            {
+                                "Vehicle Number": veh_num,
+                                "Type": vtype,
+                                "Status": status,
+                                "VIN": details.get("VIN", ""),
+                                "GeoTab": details.get("GeoTab", ""),
+                                "Branded/Rental": details.get("Branded/Rental", ""),
+                            }
+                        )
                     df = pd.DataFrame(rows)
                 else:
                     # Drivers export: dump current tree values
@@ -819,15 +837,17 @@ class DataManagementTab:
                         if len(vals) < 8:
                             continue
                         _, emp_id, name, loc, status, priority, exp, lic = vals
-                        rows.append({
-                            "Employee ID": emp_id,
-                            "Name": name,
-                            "Location": loc,
-                            "Status": status,
-                            "Priority": priority,
-                            "Experience": exp,
-                            "License Type": lic,
-                        })
+                        rows.append(
+                            {
+                                "Employee ID": emp_id,
+                                "Name": name,
+                                "Location": loc,
+                                "Status": status,
+                                "Priority": priority,
+                                "Experience": exp,
+                                "License Type": lic,
+                            }
+                        )
                     df = pd.DataFrame(rows)
 
                 df.to_csv(filename, index=False)
@@ -861,11 +881,13 @@ class DataManagementTab:
             }
             # Enrichment
             if self._vehicle_enriched:
-                record.update({
-                    "VIN": row_map.get("VIN", ""),
-                    "GeoTab": row_map.get("GeoTab", ""),
-                    "Branded/Rental": row_map.get("Brand/Rental", ""),
-                })
+                record.update(
+                    {
+                        "VIN": row_map.get("VIN", ""),
+                        "GeoTab": row_map.get("GeoTab", ""),
+                        "Branded/Rental": row_map.get("Brand/Rental", ""),
+                    }
+                )
             rows.append(record)
         return pd.DataFrame(rows)
 
@@ -875,22 +897,24 @@ class DataManagementTab:
             vals = self.drivers_tree.item(item, "values")
             if len(vals) < 8:
                 continue
-            rows.append({
-                "Employee ID": vals[1],
-                "Name": vals[2],
-                "Location": vals[3],
-                "Status": vals[4],
-                "Priority": vals[5],
-                "Experience": vals[6],
-                "License Type": vals[7],
-            })
+            rows.append(
+                {
+                    "Employee ID": vals[1],
+                    "Name": vals[2],
+                    "Location": vals[3],
+                    "Status": vals[4],
+                    "Priority": vals[5],
+                    "Experience": vals[6],
+                    "License Type": vals[7],
+                }
+            )
         return pd.DataFrame(rows)
-    
+
     def refresh_data(self):
         """Refresh current data."""
         if self.current_file:
             self.load_data()
-    
+
     def validate_data(self):
         """Validate current data with user-friendly summary."""
         active_tab = self.notebook.get()
@@ -923,7 +947,9 @@ class DataManagementTab:
             van_series = df[van_col].astype(str).str.strip()
             dupes = van_series[van_series.duplicated()].unique().tolist()
             if dupes:
-                issues.append(f"Duplicate vehicle IDs: {', '.join(map(str, dupes[:10]))}{'...' if len(dupes)>10 else ''}")
+                issues.append(
+                    f"Duplicate vehicle IDs: {', '.join(map(str, dupes[:10]))}{'...' if len(dupes)>10 else ''}"
+                )
         except Exception:
             issues.append("Could not evaluate duplicate vehicle IDs")
 
@@ -938,9 +964,13 @@ class DataManagementTab:
         # Type normalization hints
         known_types = {"extra large", "large", "step van"}
         if type_col in df.columns:
-            unknown_types = sorted({str(x).strip().lower() for x in df[type_col].dropna().unique()} - known_types)
+            unknown_types = sorted(
+                {str(x).strip().lower() for x in df[type_col].dropna().unique()} - known_types
+            )
             if unknown_types:
-                issues.append(f"Unrecognized vehicle types: {', '.join(unknown_types[:10])}{'...' if len(unknown_types)>10 else ''}")
+                issues.append(
+                    f"Unrecognized vehicle types: {', '.join(unknown_types[:10])}{'...' if len(unknown_types)>10 else ''}"
+                )
 
         # Cross-check with Vehicle Log enrichment if available
         details = getattr(self, "_vehicle_details", {})
@@ -948,14 +978,24 @@ class DataManagementTab:
             try:
                 van_series = df[van_col].astype(str).str.strip()
                 total = int(van_series.nunique())
-                with_details = sum(1 for vid in van_series if str(vid) in details and details[str(vid)].get("VIN"))
-                without_vin = [str(vid) for vid in van_series if str(vid) in details and not details[str(vid)].get("VIN")]
+                with_details = sum(
+                    1 for vid in van_series if str(vid) in details and details[str(vid)].get("VIN")
+                )
+                without_vin = [
+                    str(vid)
+                    for vid in van_series
+                    if str(vid) in details and not details[str(vid)].get("VIN")
+                ]
                 if total:
                     coverage = with_details / total * 100.0
                     if coverage < 80:
-                        issues.append(f"VIN coverage low: {coverage:.1f}% of vehicles have VIN in Vehicle Log")
+                        issues.append(
+                            f"VIN coverage low: {coverage:.1f}% of vehicles have VIN in Vehicle Log"
+                        )
                 if without_vin:
-                    issues.append(f"Vehicles missing VIN: {', '.join(without_vin[:10])}{'...' if len(without_vin)>10 else ''}")
+                    issues.append(
+                        f"Vehicles missing VIN: {', '.join(without_vin[:10])}{'...' if len(without_vin)>10 else ''}"
+                    )
             except Exception:
                 issues.append("Could not compute Vehicle Log enrichment metrics")
 
@@ -990,39 +1030,43 @@ class DataManagementTab:
             f"Brand/Rental: {details.get('Branded/Rental', '')}"
         )
         messagebox.showinfo("Vehicle Details", info)
-    
+
     def generate_sample_data(self):
         """Generate sample data."""
         # Generate sample vehicles
         vehicles_data = []
         for i in range(1, 21):
-            vehicles_data.append({
-                "Vehicle Number": f"VEH{i:03d}",
-                "Type": ["Standard", "Premium", "Economy"][i % 3],
-                "Location": ["Main", "North", "South"][i % 3],
-                "Status": "available",
-                "Priority": 50 + (i % 3) * 10,
-                "Capacity": 4 + (i % 2) * 2
-            })
-        
+            vehicles_data.append(
+                {
+                    "Vehicle Number": f"VEH{i:03d}",
+                    "Type": ["Standard", "Premium", "Economy"][i % 3],
+                    "Location": ["Main", "North", "South"][i % 3],
+                    "Status": "available",
+                    "Priority": 50 + (i % 3) * 10,
+                    "Capacity": 4 + (i % 2) * 2,
+                }
+            )
+
         vehicles_df = pd.DataFrame(vehicles_data)
         self.populate_vehicles_tree(vehicles_df)
-        
+
         # Generate sample drivers
         drivers_data = []
         for i in range(1, 11):
-            drivers_data.append({
-                "Employee ID": f"EMP{i:03d}",
-                "Name": f"Driver {i}",
-                "Location": ["Main", "North", "South"][i % 3],
-                "Status": "active",
-                "Priority": ["Low", "Medium", "High"][i % 3],
-                "Experience": i % 10,
-                "License Type": "Standard"
-            })
-        
+            drivers_data.append(
+                {
+                    "Employee ID": f"EMP{i:03d}",
+                    "Name": f"Driver {i}",
+                    "Location": ["Main", "North", "South"][i % 3],
+                    "Status": "active",
+                    "Priority": ["Low", "Medium", "High"][i % 3],
+                    "Experience": i % 10,
+                    "License Type": "Standard",
+                }
+            )
+
         drivers_df = pd.DataFrame(drivers_data)
         self.populate_drivers_tree(drivers_df)
-        
+
         self.save_button.configure(state="normal")
         logger.info("Sample data generated")

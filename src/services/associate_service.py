@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Iterable, List, Optional
-import json
 
 import pandas as pd
 from loguru import logger
@@ -73,7 +73,9 @@ class AssociateService:
 
     # ------------------------------------------------------------------
     # Public API
-    def load_associates(self, path: Optional[str] = None, *, force_reload: bool = False) -> List[AssociateRecord]:
+    def load_associates(
+        self, path: Optional[str] = None, *, force_reload: bool = False
+    ) -> List[AssociateRecord]:
         """Load associates from CSV, applying normalization and caching."""
         resolved = self.resolve_associate_path(path)
         if not resolved:
