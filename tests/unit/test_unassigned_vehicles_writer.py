@@ -1,15 +1,11 @@
 """Unit tests for unassigned vehicles writer."""
 
-import tempfile
 import time
-from datetime import date, datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from datetime import date, datetime
+from unittest.mock import patch
 
 import pandas as pd
-import pytest
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from src.services.unassigned_vehicles_writer import UnassignedVehiclesWriter
@@ -25,9 +21,9 @@ class TestUnassignedVehiclesWriter:
         workbook = Workbook()
         allocation_date = date(2025, 1, 5)
 
-        worksheet = writer.create_unassigned_sheet(
+        worksheet = unassigned_writer.create_unassigned_sheet(
             workbook=workbook,
-            unassigned_vehicles=sample_unassigned_vehicles,
+            unassigned_vehicles=sample_unassigned_vehicles_df,
             vehicle_log_dict=vehicle_log_dict,
             allocation_date=allocation_date,
         )
@@ -38,7 +34,7 @@ class TestUnassignedVehiclesWriter:
         assert worksheet.title == expected_name
 
         # Check headers
-        for col_idx, (header, _) in enumerate(writer.COLUMNS, start=1):
+        for col_idx, (header, _) in enumerate(unassigned_writer.COLUMNS, start=1):
             assert worksheet.cell(row=1, column=col_idx).value == header
 
         # Check data rows
@@ -53,24 +49,24 @@ class TestUnassignedVehiclesWriter:
         assert worksheet.cell(row=2, column=10).value == "01/05/2025"
         assert ":" in str(worksheet.cell(row=2, column=11).value)  # Time format
 
-    def test_column_widths(self, writer):
+    def test_column_widths(self, unassigned_writer):
         """Test column width settings."""
         workbook = Workbook()
         worksheet = workbook.create_sheet("Test")
 
-        writer._setup_headers(worksheet)
+        unassigned_writer._setup_headers(worksheet)
 
         # Check column widths are set
         assert worksheet.column_dimensions["A"].width == 12  # Van ID
         assert worksheet.column_dimensions["B"].width == 15  # Vehicle Type
         assert worksheet.column_dimensions["E"].width == 20  # Days Since Last Assignment
 
-    def test_header_formatting(self, writer):
+    def test_header_formatting(self, unassigned_writer):
         """Test header formatting."""
         workbook = Workbook()
         worksheet = workbook.create_sheet("Test")
 
-        writer._setup_headers(worksheet)
+        unassigned_writer._setup_headers(worksheet)
 
         # Check first header cell formatting
         header_cell = worksheet.cell(row=1, column=1)
@@ -79,7 +75,7 @@ class TestUnassignedVehiclesWriter:
         assert header_cell.fill.start_color.rgb == "FF002060"  # Dark blue
         assert header_cell.alignment.horizontal == "center"
 
-    def test_calculate_days_since_assignment(self, writer):
+    def test_calculate_days_since_assignment(self, unassigned_writer):
         """Test days since assignment calculation."""
         # Create historical data
         historical_data = pd.DataFrame(
@@ -91,21 +87,21 @@ class TestUnassignedVehiclesWriter:
         )
 
         # Test with vehicle that has history
-        days = writer.calculate_days_since_assignment("BW10", historical_data)
+        days = unassigned_writer.calculate_days_since_assignment("BW10", historical_data)
         expected_days = (datetime.now().date() - date(2025, 1, 3)).days
         assert days == expected_days
 
         # Test with vehicle that has no history
-        days = writer.calculate_days_since_assignment("BW99", historical_data)
+        days = unassigned_writer.calculate_days_since_assignment("BW99", historical_data)
         assert days == 0
 
         # Test with None historical data
-        days = writer.calculate_days_since_assignment("BW10", None)
+        days = unassigned_writer.calculate_days_since_assignment("BW10", None)
         assert days == 0
 
-    def test_create_unassigned_summary(self, writer, sample_unassigned_vehicles):
+    def test_create_unassigned_summary(self, unassigned_writer, sample_unassigned_vehicles_df):
         """Test unassigned vehicles summary creation."""
-        summary = writer.create_unassigned_summary(sample_unassigned_vehicles)
+        summary = unassigned_writer.create_unassigned_summary(sample_unassigned_vehicles_df)
 
         assert summary["total_unassigned"] == 3
         assert summary["operational_unassigned"] == 2
@@ -114,19 +110,19 @@ class TestUnassignedVehiclesWriter:
         assert summary["by_type"]["Extra Large"] == 1
         assert summary["by_type"]["Step Van"] == 1
 
-    def test_format_unassigned_sheet(self, writer):
+    def test_format_unassigned_sheet(self, unassigned_writer):
         """Test sheet formatting."""
         workbook = Workbook()
-        allocation_date = date(2025, 1, 5)
+        date(2025, 1, 5)
         worksheet = workbook.create_sheet("Test")
 
         # Add some test data
-        writer._setup_headers(worksheet)
+        unassigned_writer._setup_headers(worksheet)
         for row in range(2, 5):
             for col in range(1, 12):
                 worksheet.cell(row=row, column=col, value=f"Data{row}{col}")
 
-        writer.format_unassigned_sheet(worksheet)
+        unassigned_writer.format_unassigned_sheet(worksheet)
 
         # Check AutoFilter is applied
         assert worksheet.auto_filter.ref == "A1:K4"
@@ -138,14 +134,16 @@ class TestUnassignedVehiclesWriter:
         assert worksheet.page_setup.orientation == "landscape"
         assert worksheet.page_setup.fitToWidth == 1
 
-    def test_alternating_row_colors(self, writer, sample_unassigned_vehicles, vehicle_log_dict):
+    def test_alternating_row_colors(
+        self, unassigned_writer, sample_unassigned_vehicles_df, vehicle_log_dict
+    ):
         """Test alternating row colors."""
         workbook = Workbook()
         allocation_date = date(2025, 1, 5)
 
-        worksheet = writer.create_unassigned_sheet(
+        worksheet = unassigned_writer.create_unassigned_sheet(
             workbook=workbook,
-            unassigned_vehicles=sample_unassigned_vehicles,
+            unassigned_vehicles=sample_unassigned_vehicles_df,
             vehicle_log_dict=vehicle_log_dict,
             allocation_date=allocation_date,
         )
@@ -159,14 +157,14 @@ class TestUnassignedVehiclesWriter:
         )
 
     def test_export_unassigned_to_csv(
-        self, writer, sample_unassigned_vehicles, vehicle_log_dict, tmp_path
+        self, unassigned_writer, sample_unassigned_vehicles_df, vehicle_log_dict, tmp_path
     ):
         """Test CSV export functionality."""
         output_path = tmp_path / "unassigned.csv"
         allocation_date = date(2025, 1, 5)
 
-        writer.export_unassigned_to_csv(
-            unassigned_vehicles=sample_unassigned_vehicles,
+        unassigned_writer.export_unassigned_to_csv(
+            unassigned_vehicles=sample_unassigned_vehicles_df,
             vehicle_log_dict=vehicle_log_dict,
             output_path=str(output_path),
             allocation_date=allocation_date,
@@ -184,13 +182,13 @@ class TestUnassignedVehiclesWriter:
         assert df.iloc[0]["Van ID"] == "BW10"
         assert df.iloc[0]["VIN"] == "1HGCM82633A004352"
 
-    def test_empty_unassigned_vehicles(self, writer, vehicle_log_dict):
+    def test_empty_unassigned_vehicles(self, unassigned_writer, vehicle_log_dict):
         """Test handling empty unassigned vehicles."""
         workbook = Workbook()
         allocation_date = date(2025, 1, 5)
         empty_df = pd.DataFrame()
 
-        worksheet = writer.create_unassigned_sheet(
+        worksheet = unassigned_writer.create_unassigned_sheet(
             workbook=workbook,
             unassigned_vehicles=empty_df,
             vehicle_log_dict=vehicle_log_dict,
@@ -201,15 +199,15 @@ class TestUnassignedVehiclesWriter:
         assert worksheet.max_row == 1  # Only headers
         assert worksheet.cell(row=1, column=1).value == "Van ID"
 
-    def test_missing_vehicle_log_data(self, writer, sample_unassigned_vehicles):
+    def test_missing_vehicle_log_data(self, unassigned_writer, sample_unassigned_vehicles_df):
         """Test handling missing vehicle log data."""
         workbook = Workbook()
         allocation_date = date(2025, 1, 5)
         empty_vehicle_log = {}
 
-        worksheet = writer.create_unassigned_sheet(
+        worksheet = unassigned_writer.create_unassigned_sheet(
             workbook=workbook,
-            unassigned_vehicles=sample_unassigned_vehicles,
+            unassigned_vehicles=sample_unassigned_vehicles_df,
             vehicle_log_dict=empty_vehicle_log,
             allocation_date=allocation_date,
         )
@@ -388,7 +386,7 @@ class TestUnassignedVehiclesWriter:
             assert cell.value == header
 
             # Check font formatting
-            assert cell.font.bold == True
+            assert cell.font.bold is True
             assert cell.font.color.rgb == "FFFFFF"  # White text
             assert cell.font.name == "Calibri"
             assert cell.font.size == 11
@@ -400,7 +398,7 @@ class TestUnassignedVehiclesWriter:
             # Check alignment
             assert cell.alignment.horizontal == "center"
             assert cell.alignment.vertical == "center"
-            assert cell.alignment.wrap_text == True
+            assert cell.alignment.wrap_text is True
 
             # Check border
             assert cell.border.left.style == "thin"
@@ -509,7 +507,7 @@ class TestUnassignedVehiclesWriter:
         # Check print settings
         assert worksheet.page_setup.orientation == "landscape"
         assert worksheet.page_setup.fitToWidth == 1
-        assert worksheet.page_setup.fitToHeight == False
+        assert worksheet.page_setup.fitToHeight is False
 
         # Check margins
         assert worksheet.page_margins.left == 0.5
@@ -686,7 +684,7 @@ class TestUnassignedVehiclesWriter:
         workbook = Workbook()
         allocation_date = date(2025, 1, 5)
 
-        worksheet = unassigned_writer.create_unassigned_sheet(
+        unassigned_writer.create_unassigned_sheet(
             workbook=workbook,
             unassigned_vehicles=sample_unassigned_vehicles_df,
             vehicle_log_dict=vehicle_log_dict,

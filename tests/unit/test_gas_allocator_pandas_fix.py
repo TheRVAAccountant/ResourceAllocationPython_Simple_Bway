@@ -1,7 +1,5 @@
 """Test for pandas Series fix in GAS compatible allocator."""
 
-from datetime import date
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -45,7 +43,7 @@ class TestGASAllocatorPandasFix:
         allocator.vehicle_log_data = vehicle_log_data
 
         # Create a mock allocation result
-        allocation_result = AllocationResult(
+        AllocationResult(
             request_id="test_001",
             allocations={},
             unallocated_vehicles=[],

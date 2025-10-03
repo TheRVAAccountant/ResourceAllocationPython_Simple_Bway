@@ -1,11 +1,8 @@
 """GUI component tests for duplicate validation dialog integration."""
 
 import tkinter as tk
-from datetime import date
-from tkinter import messagebox
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import Mock, patch
 
-import customtkinter as ctk
 import pytest
 
 from src.services.duplicate_validator import (
@@ -90,7 +87,7 @@ class TestGUIDuplicateValidation:
         assert "Duplicate Vehicle Assignments" in call_args[1]["title"]
         assert "BW1" in call_args[1]["message"]
         assert "multiple routes" in call_args[1]["message"]
-        assert result == True
+        assert result is True
 
     def test_show_duplicate_warning_dialog_user_cancels(
         self, mock_messagebox, sample_validation_result_with_duplicates
@@ -104,7 +101,7 @@ class TestGUIDuplicateValidation:
         result = show_duplicate_warning(sample_validation_result_with_duplicates)
 
         mock_messagebox.askyesno.assert_called_once()
-        assert result == False
+        assert result is False
 
     def test_show_duplicate_info_dialog(
         self, mock_messagebox, sample_validation_result_with_duplicates
@@ -180,9 +177,7 @@ class TestGUIDuplicateValidation:
 
                 if user_choice:
                     # User chose to proceed - mark duplicates
-                    marked_results = mock_validator.mark_duplicates_in_results(
-                        allocation_results, validation_result
-                    )
+                    mock_validator.mark_duplicates_in_results(allocation_results, validation_result)
 
         # Verify the flow
         mock_validator.validate_allocations.assert_called_once_with(allocation_results)
@@ -206,13 +201,9 @@ class TestGUIDuplicateValidation:
         if validation_result.has_duplicates():
             user_choice = mock_show_warning(validation_result)
 
-            if not user_choice:
-                # Allocation should be aborted
-                allocation_aborted = True
-            else:
-                allocation_aborted = False
+            allocation_aborted = not user_choice
 
-        assert allocation_aborted == True
+        assert allocation_aborted is True
 
     # ==================== Custom Dialog Widget Tests ====================
 
@@ -262,7 +253,7 @@ class TestGUIDuplicateValidation:
         with patch("customtkinter.CTkLabel") as mock_label, patch(
             "customtkinter.CTkTextbox"
         ) as mock_textbox, patch("customtkinter.CTkButton") as mock_button:
-            dialog = DuplicateValidationDialog(Mock(), validation_result)
+            DuplicateValidationDialog(Mock(), validation_result)
 
             # Should create various widgets
             assert mock_label.call_count >= 1  # Title and other labels
@@ -283,7 +274,7 @@ class TestGUIDuplicateValidation:
             # Simulate clicking proceed
             dialog._on_proceed()
 
-            assert dialog.result == True
+            assert dialog.result is True
             mock_window.destroy.assert_called_once()
 
     def test_custom_dialog_cancel_action(self):
@@ -300,7 +291,7 @@ class TestGUIDuplicateValidation:
             # Simulate clicking cancel
             dialog._on_cancel()
 
-            assert dialog.result == False
+            assert dialog.result is False
             mock_window.destroy.assert_called_once()
 
     # ==================== Progress Integration Tests ====================
@@ -320,7 +311,7 @@ class TestGUIDuplicateValidation:
             tab = AllocationTab(Mock())
 
             # Simulate validation with progress updates
-            def validate_with_progress(allocations):
+            def validate_with_progress(allocations):  # noqa: ARG001
                 # Progress at start
                 tab.update_progress("Validating for duplicates...", 70)
 
@@ -336,7 +327,7 @@ class TestGUIDuplicateValidation:
 
             # Run validation
             allocation_results = [{"Van ID": "BW1", "Route Code": "CX1"}]
-            result = mock_validator.validate_allocations(allocation_results)
+            mock_validator.validate_allocations(allocation_results)
 
             # Check progress was updated
             assert mock_update_progress.call_count >= 2
@@ -347,7 +338,7 @@ class TestGUIDuplicateValidation:
     # ==================== Error Handling Tests ====================
 
     @patch("src.gui.utils.duplicate_dialog.logger")
-    def test_dialog_error_handling(self, mock_logger, mock_messagebox):
+    def test_dialog_error_handling(self, mock_logger, mock_messagebox):  # noqa: ARG002
         """Test error handling in dialog functions."""
         from src.gui.utils.duplicate_dialog import show_duplicate_warning
 
@@ -356,7 +347,7 @@ class TestGUIDuplicateValidation:
 
         try:
             show_duplicate_warning(invalid_result)
-        except Exception as e:
+        except Exception:
             # Should handle gracefully and log error
             assert mock_logger.error.called
 
@@ -372,7 +363,7 @@ class TestGUIDuplicateValidation:
 
         # Should not crash, should return False (safe default)
         result = show_duplicate_warning(validation_result)
-        assert result == False
+        assert result is False
 
     # ==================== Accessibility Tests ====================
 
@@ -387,7 +378,7 @@ class TestGUIDuplicateValidation:
             mock_toplevel.return_value = mock_window
 
             validation_result = ValidationResult(is_valid=False, duplicate_count=1)
-            dialog = DuplicateValidationDialog(Mock(), validation_result)
+            DuplicateValidationDialog(Mock(), validation_result)
 
             # Check that buttons are configured for keyboard access
             # This would involve checking that buttons have proper bindings
@@ -406,7 +397,7 @@ class TestGUIDuplicateValidation:
             mock_toplevel.return_value = mock_window
 
             validation_result = ValidationResult(is_valid=False, duplicate_count=1)
-            dialog = DuplicateValidationDialog(Mock(), validation_result)
+            DuplicateValidationDialog(Mock(), validation_result)
 
             # Check that labels have descriptive text
             label_calls = mock_label.call_args_list
@@ -429,7 +420,7 @@ class TestGUIDuplicateValidation:
             mock_theme("dark")
 
             validation_result = ValidationResult(is_valid=False, duplicate_count=1)
-            dialog = DuplicateValidationDialog(Mock(), validation_result)
+            DuplicateValidationDialog(Mock(), validation_result)
 
             # Dialog should inherit theme settings
             # This would be verified by checking widget configurations
@@ -440,7 +431,6 @@ class TestGUIDuplicateValidation:
     def test_complete_validation_flow(self, mock_messagebox):
         """Test complete validation flow from start to finish."""
         from src.gui.utils.duplicate_dialog import show_duplicate_warning
-        from src.services.duplicate_validator import DuplicateVehicleValidator
 
         # Create validator
         validator = DuplicateVehicleValidator()
@@ -459,7 +449,7 @@ class TestGUIDuplicateValidation:
         # Step 2: Show dialog (mock user says proceed)
         mock_messagebox.askyesno.return_value = True
         user_choice = show_duplicate_warning(result)
-        assert user_choice == True
+        assert user_choice is True
 
         # Step 3: Mark duplicates in results
         marked_results = validator.mark_duplicates_in_results(allocations, result)
@@ -472,7 +462,6 @@ class TestGUIDuplicateValidation:
     def test_validation_with_no_duplicates_flow(self, mock_messagebox):
         """Test validation flow when no duplicates found."""
         from src.gui.utils.duplicate_dialog import show_no_duplicates
-        from src.services.duplicate_validator import DuplicateVehicleValidator
 
         # Create validator
         validator = DuplicateVehicleValidator()

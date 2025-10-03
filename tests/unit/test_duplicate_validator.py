@@ -2,9 +2,7 @@
 
 import time
 from datetime import datetime
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from src.services.duplicate_validator import (
     DuplicateAssignment,
@@ -79,7 +77,7 @@ class TestDuplicateVehicleValidator:
         assert "BW2" in result.duplicates
         assert len(result.warnings) == 2
 
-    def test_duplicate_assignment_object(self, duplicate_validator):
+    def test_duplicate_assignment_object(self, duplicate_validator):  # noqa: ARG002
         """Test DuplicateAssignment object functionality."""
         assignments = [
             VehicleAssignment(
@@ -206,7 +204,7 @@ class TestDuplicateVehicleValidator:
         report = duplicate_validator.generate_duplicate_report(result)
 
         assert report["duplicate_count"] == 1
-        assert report["is_valid"] == True  # Non-strict mode
+        assert report["is_valid"] is False  # Any duplicates make is_valid False
         assert len(report["duplicates"]) == 1
 
         duplicate_info = report["duplicates"][0]
@@ -553,7 +551,7 @@ class TestDuplicateVehicleValidator:
         result = duplicate_validator.validate_allocations(large_allocations)
 
         # Generate report to exercise all functionality
-        report = duplicate_validator.generate_duplicate_report(result)
+        duplicate_validator.generate_duplicate_report(result)
 
         # Measure final memory
         final_memory = process.memory_info().rss / 1024 / 1024  # MB

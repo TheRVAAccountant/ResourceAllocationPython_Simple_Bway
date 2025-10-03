@@ -1,6 +1,5 @@
 """Unit tests for pandas Series handling in GASCompatibleAllocator."""
 
-from datetime import date
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -8,7 +7,6 @@ import pandas as pd
 import pytest
 
 from src.core.gas_compatible_allocator import GASCompatibleAllocator
-from src.models.allocation import AllocationResult
 
 
 class TestGASCompatibleAllocatorPandasFix:
@@ -63,7 +61,7 @@ class TestGASCompatibleAllocatorPandasFix:
             vehicle_log_dict = call_args.kwargs.get("vehicle_log_dict", {})
 
             # Verify all values in vehicle_log_dict are strings, not Series
-            for van_id, info in vehicle_log_dict.items():
+            for _van_id, info in vehicle_log_dict.items():
                 assert isinstance(info["vin"], str)
                 assert isinstance(info["geotab"], str)
                 assert isinstance(info["brand_or_rental"], str)
@@ -116,7 +114,7 @@ class TestGASCompatibleAllocatorPandasFix:
             assert len(vehicle_log_dict) == 3
 
             # Verify all values are strings
-            for van_id, info in vehicle_log_dict.items():
+            for _van_id, info in vehicle_log_dict.items():
                 assert isinstance(info["vin"], str)
                 assert isinstance(info["geotab"], str)
                 assert isinstance(info["vehicle_type"], str)

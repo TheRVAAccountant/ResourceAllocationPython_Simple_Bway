@@ -4,7 +4,6 @@ from datetime import date
 
 import pytest
 from openpyxl import Workbook
-from openpyxl.styles import Font
 
 from src.services.daily_details_thick_borders import DailyDetailsThickBorderService
 from src.services.daily_details_writer import DailyDetailsWriter

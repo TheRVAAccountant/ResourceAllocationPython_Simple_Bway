@@ -198,6 +198,38 @@ class DuplicateVehicleValidator(BaseService):
         logger.info(f"Validation complete: {result.get_summary()}")
         return result
 
+    def _parse_wave_time(self, wave_str: str) -> tuple[int, int]:
+        """
+        Parse wave time string to sortable tuple (hour_24, minute).
+
+        Args:
+            wave_str: Wave time string like "8:00 AM" or "11:30 PM"
+
+        Returns:
+            Tuple of (hour_24, minute) for sorting
+        """
+        try:
+            import re
+
+            # Extract time components
+            match = re.match(r"(\d{1,2}):(\d{2})\s*(AM|PM)?", str(wave_str).upper())
+            if not match:
+                return (99, 99)  # Sort unknown times last
+
+            hour = int(match.group(1))
+            minute = int(match.group(2))
+            period = match.group(3)
+
+            # Convert to 24-hour format
+            if period == "PM" and hour != 12:
+                hour += 12
+            elif period == "AM" and hour == 12:
+                hour = 0
+
+            return (hour, minute)
+        except Exception:
+            return (99, 99)  # Sort errors last
+
     def _suggest_resolution(self, assignments: list[VehicleAssignment]) -> str:
         """
         Suggest resolution for duplicate assignments.
@@ -208,8 +240,8 @@ class DuplicateVehicleValidator(BaseService):
         Returns:
             Resolution suggestion string.
         """
-        # Sort by wave to suggest keeping earliest
-        sorted_assignments = sorted(assignments, key=lambda a: a.wave)
+        # Sort by wave time to suggest keeping earliest
+        sorted_assignments = sorted(assignments, key=lambda a: self._parse_wave_time(a.wave))
 
         if len(sorted_assignments) > 1:
             keep_route = sorted_assignments[0].route_code
