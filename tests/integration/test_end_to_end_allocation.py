@@ -7,13 +7,12 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-from openpyxl import Workbook
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.core.gas_compatible_allocator import GASCompatibleAllocator
-from src.services.allocation_history_service import AllocationHistoryService
-from src.services.duplicate_validator import DuplicateVehicleValidator
+from src.core.gas_compatible_allocator import GASCompatibleAllocator  # noqa: E402
+from src.services.allocation_history_service import AllocationHistoryService  # noqa: E402
+from src.services.duplicate_validator import DuplicateVehicleValidator  # noqa: E402
 
 
 @pytest.fixture
@@ -185,7 +184,7 @@ def test_history_service_integration(temp_files):
     allocator.load_daily_routes(temp_files["daily_routes"])
     allocator.load_vehicle_status(temp_files["vehicle_status"])
 
-    results = allocator.allocate_resources()
+    _results = allocator.allocate_resources()
 
     # History should be saved automatically by allocator
     # Verify by checking history service
@@ -198,27 +197,19 @@ def test_history_service_integration(temp_files):
 
 
 @pytest.mark.integration
-def test_output_file_generation(temp_files):
+def test_output_file_generation(temp_files, tmp_path):
     """Test that output Excel file is generated correctly."""
+    output_path = tmp_path / "test_output.xlsx"
 
     allocator = GASCompatibleAllocator()
     allocator.load_day_of_ops(temp_files["day_of_ops"])
-    allocator.load_daily_routes(temp_files["daily_routes"])
-    allocator.load_vehicle_status(temp_files["vehicle_status"])
-
-    results = allocator.allocate_resources()
-
-    # Generate output workbook
-    output_path = temp_files["output"]
-    allocator.save_to_excel(output_path, allocation_date=date.today())
+    allocator.save_to_excel(str(output_path), allocation_date=date.today())
 
     # Verify file exists
-    assert Path(output_path).exists()
-
-    # Verify file can be opened
+    assert output_path.exists()
     from openpyxl import load_workbook
 
-    wb = load_workbook(output_path)
+    wb = load_workbook(str(output_path))
 
     # Verify sheets exist
     assert "Daily Details" in wb.sheetnames

@@ -3,8 +3,8 @@
 import gc
 import os
 import time
-from datetime import date, datetime, timedelta
-from typing import Any, Dict, List
+from datetime import date, timedelta
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -13,9 +13,7 @@ import pytest
 from openpyxl import Workbook
 
 from src.core.gas_compatible_allocator import GASCompatibleAllocator
-from src.services.daily_details_thick_borders import DailyDetailsThickBorderService
 from src.services.duplicate_validator import DuplicateVehicleValidator
-from src.services.unassigned_vehicles_writer import UnassignedVehiclesWriter
 
 
 class TestLargeDatasetPerformance:
@@ -67,7 +65,7 @@ class TestLargeDatasetPerformance:
 
     def generate_large_allocation_dataset(
         self, count: int, duplicate_rate: float = 0.1
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Generate large allocation dataset for testing.
 
         Args:
@@ -151,7 +149,7 @@ class TestLargeDatasetPerformance:
 
         return pd.DataFrame(data)
 
-    def generate_large_vehicle_log(self, count: int) -> Dict[str, Dict]:
+    def generate_large_vehicle_log(self, count: int) -> dict[str, dict]:
         """Generate large vehicle log dictionary.
 
         Args:
@@ -206,7 +204,7 @@ class TestLargeDatasetPerformance:
         allocations = self.generate_large_allocation_dataset(5000, duplicate_rate=0.2)
 
         performance_monitor.start()
-        result = duplicate_validator.validate_allocations(allocations)
+        duplicate_validator.validate_allocations(allocations)
         performance_monitor.stop()
 
         # Relaxed threshold for very large dataset
@@ -402,7 +400,7 @@ class TestLargeDatasetPerformance:
 
         for section in range(200):
             section_date = base_date + timedelta(days=section)
-            for row_in_section in range(5):
+            for _row_in_section in range(5):
                 worksheet.cell(row=current_row, column=1, value=section_date)
                 worksheet.cell(row=current_row, column=2, value=f"CX{current_row}")
                 worksheet.cell(row=current_row, column=3, value=f"Driver_{current_row}")
@@ -558,7 +556,7 @@ class TestLargeDatasetPerformance:
         performance_monitor.start()
 
         results = []
-        for i, dataset in enumerate(datasets):
+        for _i, dataset in enumerate(datasets):
             result = validator.validate_allocations(dataset)
             results.append(result)
 
@@ -589,7 +587,7 @@ class TestLargeDatasetPerformance:
         allocations = self.generate_large_allocation_dataset(10000, duplicate_rate=0.05)
 
         performance_monitor.start()
-        result = validator.validate_allocations(allocations)
+        validator.validate_allocations(allocations)
         performance_monitor.stop()
 
         # Should complete in reasonable time even for very large dataset
@@ -608,7 +606,7 @@ class TestLargeDatasetPerformance:
 
     # ==================== Benchmark Comparison Tests ====================
 
-    def test_performance_regression_benchmark(self, performance_monitor):
+    def test_performance_regression_benchmark(self, performance_monitor):  # noqa: ARG002
         """Benchmark test to detect performance regressions."""
         # Standard benchmark dataset
         allocations = self.generate_large_allocation_dataset(1000, duplicate_rate=0.1)
@@ -632,7 +630,7 @@ class TestLargeDatasetPerformance:
         assert avg_time < 2.0, f"Average time {avg_time:.3f}s exceeded threshold"
         assert std_dev < 0.5, f"Performance inconsistent (std dev: {std_dev:.3f}s)"
 
-        print(f"\nBenchmark Results:")
+        print("\nBenchmark Results:")
         print(f"  Average Time: {avg_time:.3f}s")
         print(f"  Standard Deviation: {std_dev:.3f}s")
         print(f"  Min Time: {min(times):.3f}s")

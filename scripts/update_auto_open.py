@@ -16,4 +16,3 @@ data["auto_open_results"] = True
 
 cfg.write_text(json.dumps(data, indent=2))
 print("auto_open_results set to True in", cfg)
-

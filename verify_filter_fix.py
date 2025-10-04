@@ -23,7 +23,7 @@ print(f"   Retrieved {len(history)} entries")
 # Test with has_duplicates filter (this was causing the error)
 print("\n✓ Test 2: get_history() with has_duplicates filter")
 try:
-    filtered_history = service.get_history(limit=10, filters={'has_duplicates': True})
+    filtered_history = service.get_history(limit=10, filters={"has_duplicates": True})
     print(f"   SUCCESS! Retrieved {len(filtered_history)} entries with duplicates")
 except TypeError as e:
     print(f"   FAILED: {e}")
@@ -32,7 +32,7 @@ except TypeError as e:
 # Test with has_errors filter
 print("\n✓ Test 3: get_history() with has_errors filter")
 try:
-    filtered_history = service.get_history(limit=10, filters={'has_errors': True})
+    filtered_history = service.get_history(limit=10, filters={"has_errors": True})
     print(f"   SUCCESS! Retrieved {len(filtered_history)} entries with errors")
 except TypeError as e:
     print(f"   FAILED: {e}")
@@ -42,8 +42,7 @@ except TypeError as e:
 print("\n✓ Test 4: get_history() with multiple filters")
 try:
     filtered_history = service.get_history(
-        limit=10, 
-        filters={'has_duplicates': True, 'has_errors': True}
+        limit=10, filters={"has_duplicates": True, "has_errors": True}
     )
     print(f"   SUCCESS! Retrieved {len(filtered_history)} entries with duplicates AND errors")
 except TypeError as e:

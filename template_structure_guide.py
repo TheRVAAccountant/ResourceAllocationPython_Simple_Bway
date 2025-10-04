@@ -6,65 +6,57 @@ This module provides the exact structure definitions for creating output files
 that match the Daily Summary Log 2025.xlsx template format.
 """
 
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
-from datetime import datetime, time
+from typing import Any
+
 import openpyxl
-from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
 
 @dataclass
 class ColumnDefinition:
     """Definition of a column in the output template."""
+
     name: str
     data_type: str  # 'datetime', 'str', 'float', 'int', 'time'
-    excel_format: Optional[str] = None
-    width: Optional[float] = None
+    excel_format: str | None = None
+    width: float | None = None
     required: bool = True
+
 
 @dataclass
 class SheetTemplate:
     """Template definition for a sheet."""
+
     name: str
-    columns: List[ColumnDefinition]
-    header_style: Dict[str, Any]
-    data_validation: Dict[str, Any]
+    columns: list[ColumnDefinition]
+    header_style: dict[str, Any]
+    data_validation: dict[str, Any]
+
 
 class TemplateStructure:
     """Complete structure definition for the Daily Summary Log template."""
-    
+
     # Color definitions from the template
     HEADER_COLOR = "FF46BDC6"  # Teal background for headers
     HEADER_FONT_COLOR = "FF000000"  # Black text
-    
+
     # Font definitions
-    HEADER_FONT = Font(
-        bold=True,
-        size=11,
-        name='Calibri',
-        color=HEADER_FONT_COLOR
-    )
-    
-    DATA_FONT = Font(
-        bold=False,
-        size=11,
-        name='Calibri'
-    )
-    
+    HEADER_FONT = Font(bold=True, size=11, name="Calibri", color=HEADER_FONT_COLOR)
+
+    DATA_FONT = Font(bold=False, size=11, name="Calibri")
+
     # Fill definitions
-    HEADER_FILL = PatternFill(
-        start_color=HEADER_COLOR,
-        end_color=HEADER_COLOR,
-        fill_type='solid'
-    )
-    
+    HEADER_FILL = PatternFill(start_color=HEADER_COLOR, end_color=HEADER_COLOR, fill_type="solid")
+
     # Border definitions
     THIN_BORDER = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
     )
-    
+
     @classmethod
     def get_daily_details_template(cls) -> SheetTemplate:
         """Get the Daily Details sheet template."""
@@ -94,21 +86,18 @@ class TemplateStructure:
             ColumnDefinition("Vehicle Inspection", "str", None, 18.0, False),
             ColumnDefinition("Route Completion", "str", None, 18.0, False),
         ]
-        
+
         header_style = {
-            'font': cls.HEADER_FONT,
-            'fill': cls.HEADER_FILL,
-            'border': cls.THIN_BORDER,
-            'alignment': Alignment(horizontal='center', vertical='center')
+            "font": cls.HEADER_FONT,
+            "fill": cls.HEADER_FILL,
+            "border": cls.THIN_BORDER,
+            "alignment": Alignment(horizontal="center", vertical="center"),
         }
-        
+
         return SheetTemplate(
-            name="Daily Details",
-            columns=columns,
-            header_style=header_style,
-            data_validation={}
+            name="Daily Details", columns=columns, header_style=header_style, data_validation={}
         )
-    
+
     @classmethod
     def get_available_unassigned_template(cls, date_str: str) -> SheetTemplate:
         """Get the Available & Unassigned sheet template."""
@@ -129,21 +118,21 @@ class TemplateStructure:
             ColumnDefinition("Date UNGROUNDED", "datetime", "mm/dd/yyyy", 15.0, False),
             ColumnDefinition("Opnal? Y/N", "str", None, 12.0, False),
         ]
-        
+
         header_style = {
-            'font': cls.HEADER_FONT,
-            'fill': cls.HEADER_FILL,
-            'border': cls.THIN_BORDER,
-            'alignment': Alignment(horizontal='center', vertical='center')
+            "font": cls.HEADER_FONT,
+            "fill": cls.HEADER_FILL,
+            "border": cls.THIN_BORDER,
+            "alignment": Alignment(horizontal="center", vertical="center"),
         }
-        
+
         return SheetTemplate(
             name=f"{date_str} - Available & Unassign",
             columns=columns,
             header_style=header_style,
-            data_validation={}
+            data_validation={},
         )
-    
+
     @classmethod
     def get_results_template(cls, date_str: str) -> SheetTemplate:
         """Get the Results sheet template."""
@@ -160,72 +149,76 @@ class TemplateStructure:
             ColumnDefinition("Associate Name", "str", None, 20.0),
             ColumnDefinition("Unique Identifier", "str", None, 20.0),
         ]
-        
+
         header_style = {
-            'font': cls.HEADER_FONT,
-            'fill': cls.HEADER_FILL,
-            'border': cls.THIN_BORDER,
-            'alignment': Alignment(horizontal='center', vertical='center')
+            "font": cls.HEADER_FONT,
+            "fill": cls.HEADER_FILL,
+            "border": cls.THIN_BORDER,
+            "alignment": Alignment(horizontal="center", vertical="center"),
         }
-        
+
         return SheetTemplate(
             name=f"{date_str} - Results",
             columns=columns,
             header_style=header_style,
-            data_validation={}
+            data_validation={},
         )
+
 
 class TemplateWriter:
     """Utility class to write data using the template structure."""
-    
+
     def __init__(self, workbook_path: str):
         self.workbook_path = workbook_path
         self.workbook = openpyxl.Workbook()
         # Remove the default sheet
-        if 'Sheet' in self.workbook.sheetnames:
-            self.workbook.remove(self.workbook['Sheet'])
-    
-    def create_sheet_from_template(self, template: SheetTemplate, data: List[Dict[str, Any]] = None) -> None:
+        if "Sheet" in self.workbook.sheetnames:
+            self.workbook.remove(self.workbook["Sheet"])
+
+    def create_sheet_from_template(
+        self, template: SheetTemplate, data: list[dict[str, Any]] = None
+    ) -> None:
         """Create a sheet from template with optional data."""
         worksheet = self.workbook.create_sheet(title=template.name)
-        
+
         # Set up headers
         for col_idx, column_def in enumerate(template.columns, 1):
             cell = worksheet.cell(row=1, column=col_idx, value=column_def.name)
-            
+
             # Apply header styling
             if template.header_style:
                 for style_attr, style_value in template.header_style.items():
                     setattr(cell, style_attr, style_value)
-            
+
             # Set column width
             if column_def.width:
                 col_letter = openpyxl.utils.get_column_letter(col_idx)
                 worksheet.column_dimensions[col_letter].width = column_def.width
-        
+
         # Add data if provided
         if data:
             for row_idx, row_data in enumerate(data, 2):
                 for col_idx, column_def in enumerate(template.columns, 1):
                     value = row_data.get(column_def.name)
                     cell = worksheet.cell(row=row_idx, column=col_idx, value=value)
-                    
+
                     # Apply number formatting
                     if column_def.excel_format and value is not None:
                         cell.number_format = column_def.excel_format
-                    
+
                     # Apply data font
                     cell.font = TemplateStructure.DATA_FONT
-    
+
     def save(self) -> None:
         """Save the workbook."""
         self.workbook.save(self.workbook_path)
         print(f"Template workbook saved to: {self.workbook_path}")
 
+
 def create_sample_template():
     """Create a sample template file for testing."""
     from datetime import datetime, time
-    
+
     # Sample data for Daily Details
     daily_details_data = [
         {
@@ -239,12 +232,12 @@ def create_sample_template():
             "Type": "Standard",
             "Vehicle Type": "Large Van",
             "Route Type": "Standard Delivery",
-            "Unique Identifier": "CX1-20250804-001"
+            "Unique Identifier": "CX1-20250804-001",
         },
         {
             "Date": datetime(2025, 8, 4),
             "Route #": "CX2",
-            "Name": "Jane Smith", 
+            "Name": "Jane Smith",
             "Asset ID": "BW101",
             "Van ID": "BW101",
             "VIN": "1FTBW1CM5GKA67890",
@@ -252,10 +245,10 @@ def create_sample_template():
             "Type": "Standard",
             "Vehicle Type": "Large Van",
             "Route Type": "Standard Delivery",
-            "Unique Identifier": "CX2-20250804-001"
-        }
+            "Unique Identifier": "CX2-20250804-001",
+        },
     ]
-    
+
     # Sample data for Results
     results_data = [
         {
@@ -269,10 +262,10 @@ def create_sample_template():
             "Van Type": "Large",
             "Operational": "Yes",
             "Associate Name": "John Doe",
-            "Unique Identifier": "CX1-20250804-001"
+            "Unique Identifier": "CX1-20250804-001",
         }
     ]
-    
+
     # Sample data for Available & Unassigned
     available_data = [
         {
@@ -287,25 +280,26 @@ def create_sample_template():
             "Ownership": "Company",
             "VIN": "1FTBW1CM5GKA11111",
             "Van Type": "Large",
-            "Opnal? Y/N": "Y"
+            "Opnal? Y/N": "Y",
         }
     ]
-    
+
     # Create workbook
     date_str = "08-04-25"
     writer = TemplateWriter("sample_template_output.xlsx")
-    
+
     # Create sheets
     daily_template = TemplateStructure.get_daily_details_template()
     writer.create_sheet_from_template(daily_template, daily_details_data)
-    
+
     results_template = TemplateStructure.get_results_template(date_str)
     writer.create_sheet_from_template(results_template, results_data)
-    
+
     available_template = TemplateStructure.get_available_unassigned_template(date_str)
     writer.create_sheet_from_template(available_template, available_data)
-    
+
     writer.save()
+
 
 if __name__ == "__main__":
     print("Creating sample template output file...")

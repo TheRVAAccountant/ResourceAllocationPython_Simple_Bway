@@ -170,6 +170,7 @@ class AllocationResult(BaseModel):
 
     request_id: str
     allocations: dict[str, list[str]]  # driver_id -> list of vehicle_ids
+    allocated_vehicles: list[str] = Field(default_factory=list)
     unallocated_vehicles: list[str]
     metrics: Any | None = None  # AllocationMetrics from engine
     status: AllocationStatus = AllocationStatus.PENDING
@@ -195,7 +196,9 @@ class AllocationResult(BaseModel):
         Returns:
             Dictionary containing allocation summary.
         """
-        total_allocated = sum(len(vehicles) for vehicles in self.allocations.values())
+        total_allocated = len(self.allocated_vehicles)
+        if total_allocated == 0:
+            total_allocated = sum(len(vehicles) for vehicles in self.allocations.values())
         return {
             "request_id": self.request_id,
             "status": self.status,

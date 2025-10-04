@@ -1,15 +1,12 @@
 """Integration tests for duplicate validation and unassigned vehicles features."""
 
-import tempfile
 from datetime import date
-from pathlib import Path
 
 import pandas as pd
 import pytest
 from openpyxl import load_workbook
 
 from src.core.gas_compatible_allocator import GASCompatibleAllocator
-from src.services.duplicate_validator import DuplicateVehicleValidator
 from src.services.unassigned_vehicles_writer import UnassignedVehiclesWriter
 
 
@@ -160,7 +157,7 @@ class TestDuplicateAndUnassignedIntegration:
         allocator.update_with_driver_names()
 
         # Identify unassigned vehicles
-        unassigned = allocator.identify_unassigned_vehicles()
+        _unassigned = allocator.identify_unassigned_vehicles()
 
         # Create allocation result
         result = allocator.create_allocation_result()
@@ -205,7 +202,7 @@ class TestDuplicateAndUnassignedIntegration:
 
         # Run allocation
         allocator = GASCompatibleAllocator()
-        result = allocator.run_full_allocation(
+        _result = allocator.run_full_allocation(
             day_of_ops_file=str(day_ops_file),
             daily_routes_file=str(routes_file),
             vehicle_status_file=str(summary_file),
@@ -226,13 +223,13 @@ class TestDuplicateAndUnassignedIntegration:
 
         # Check Results sheet for duplicate markers
         results_sheet = wb[results_sheet_name]
-        has_validation_columns = False
 
         # Look for validation columns in results
         for row in results_sheet.iter_rows(min_row=2, values_only=True):
             if row and len(row) > 11:  # Extended columns for validation
-                has_validation_columns = True
-                break
+                _has_validation_columns = "Validation Status" in [cell.value for cell in row]
+                if _has_validation_columns:
+                    break
 
         # Check Unassigned sheet content
         unassigned_sheet = wb[unassigned_sheet_name]

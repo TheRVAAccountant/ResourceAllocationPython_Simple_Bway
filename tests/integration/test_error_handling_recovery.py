@@ -1,22 +1,19 @@
 """Error handling and recovery tests for corrupted Excel files and edge cases."""
 
+import contextlib
 import os
-import tempfile
-from datetime import date, datetime
-from pathlib import Path
-from unittest.mock import Mock, patch
+from datetime import date
+from unittest.mock import patch
 
-import numpy as np
 import pandas as pd
 import pytest
 import xlsxwriter
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
 from src.core.gas_compatible_allocator import GASCompatibleAllocator
 from src.services.daily_details_thick_borders import DailyDetailsThickBorderService
 from src.services.duplicate_validator import DuplicateVehicleValidator
-from src.services.excel_service import ExcelService
 from src.services.unassigned_vehicles_writer import UnassignedVehiclesWriter
 
 
@@ -265,7 +262,7 @@ class TestErrorHandlingAndRecovery:
         # Should only process valid entries with Van ID
         assert result.duplicate_count <= 2  # At most BW1, BW2 if no duplicates
 
-    def test_unassigned_writer_with_corrupt_data(self, temp_dir):
+    def test_unassigned_writer_with_corrupt_data(self, temp_dir):  # noqa: ARG002
         """Test unassigned vehicles writer with corrupted data."""
         writer = UnassignedVehiclesWriter()
 
@@ -350,7 +347,7 @@ class TestErrorHandlingAndRecovery:
     def test_file_read_failure_handling(self, mock_read_excel):
         """Test handling of file read failures."""
         # Simulate I/O error
-        mock_read_excel.side_effect = IOError("Disk read error")
+        mock_read_excel.side_effect = OSError("Disk read error")
 
         allocator = GASCompatibleAllocator()
 
@@ -395,10 +392,8 @@ class TestErrorHandlingAndRecovery:
             pytest.skip("Cannot test permission errors on this system")
         finally:
             # Restore permissions for cleanup
-            try:
+            with contextlib.suppress(Exception):
                 os.chmod(restricted_file, 0o666)
-            except:
-                pass
 
     # ==================== Data Consistency Recovery Tests ====================
 
@@ -413,7 +408,6 @@ class TestErrorHandlingAndRecovery:
         # Simulate partial failure by corrupting data mid-process
         with patch.object(allocator, "allocate_vehicles_to_routes") as mock_allocate:
             # Simulate partial results before failure
-            partial_results = [{"Van ID": "BW1", "Route Code": "CX1", "Associate Name": "Driver A"}]
             mock_allocate.side_effect = Exception("Allocation failed mid-process")
 
             with pytest.raises(Exception) as exc_info:
@@ -580,13 +574,11 @@ class TestErrorHandlingAndRecovery:
         # Test with partially corrupted data - should continue with what's available
         try:
             # Load what we can
-            valid_data_loaded = False
 
             # Try to load each file type
-            try:
+            try:  # noqa: SIM105
                 allocator.load_day_of_ops(str(corrupted_excel_files["unicode"]))  # This should work
-                valid_data_loaded = True
-            except:
+            except:  # noqa: E722
                 pass
 
             # Even if some files fail, should handle gracefully
@@ -624,10 +616,11 @@ class TestErrorHandlingAndRecovery:
 
                 # This should fail
                 allocator.update_with_driver_names()
+            except Exception:  # noqa: E722
+                pass  # Expected to fail
 
-            except Exception:
-                # On failure, state should be recoverable
-                # Allocation results should still exist even if driver update failed
-                assert len(allocator.allocation_results) > 0
-                assert allocator.day_of_ops_data is not None
-                assert allocator.vehicle_status_data is not None
+            # On failure, state should be recoverable
+            # Allocation results should still exist even if driver update failed
+            assert len(allocator.allocation_results) > 0
+            assert allocator.day_of_ops_data is not None
+            assert allocator.vehicle_status_data is not None

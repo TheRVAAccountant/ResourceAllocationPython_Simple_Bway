@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.styles import Border, Side
 
 from src.services.daily_details_thick_borders import DailyDetailsThickBorderService
 from src.services.daily_details_writer import DailyDetailsWriter
