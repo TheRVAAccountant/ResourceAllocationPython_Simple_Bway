@@ -65,7 +65,7 @@ function mainAllocation(dayOfOpsId, dailyRoutesId) {
 dayOfOpsObj = dayOfOpsObj.filter(r => r["DSP"] === "BWAY");
 
 // Filter for operational vehicles only
-var operationalFleet = fleetObj.filter(f => 
+var operationalFleet = fleetObj.filter(f =>
   f["Opnal? Y/N"] === "Y"
 );
 ```
@@ -78,7 +78,7 @@ function getVanType(serviceType) {
     "Standard Parcel - Large Van": "Large",
     "Standard Parcel Step Van - US": "Step Van"
   };
-  
+
   // Special case for Nursery Routes
   if (serviceType.indexOf("Nursery Route Level") !== -1) {
     return "Large";
@@ -91,17 +91,17 @@ function getVanType(serviceType) {
 function allocateVehiclesToRoutes(dayOfOpsObj, fleetObj) {
   // Group vehicles by type
   var fleetGroups = groupBy(operationalFleet, "Type");
-  
+
   // For each route
   dayOfOpsObj.forEach(route => {
     // 1. Determine required vehicle type
     var requiredVanType = getVanType(route["Service Type"]);
-    
+
     // 2. Check if vehicles available
     if (fleetGroups[requiredVanType].length > 0) {
       // 3. Assign first available vehicle of correct type
       var assignedVehicle = fleetGroups[requiredVanType].shift();
-      
+
       // 4. Create allocation result
       var result = {
         "Route Code": route["Route Code"],
@@ -128,13 +128,13 @@ function updateResultsWithDailyRoutes(resultsSheetName, dailyRoutesObj) {
     acc[r["Route code"]] = r["Driver name"] || "N/A";
     return acc;
   }, {});
-  
+
   // Update each allocation with driver name
   data.map(row => {
     var routeCode = row[0];
     var associateName = routeMap[routeCode] || "N/A";
     row[9] = associateName; // Associate Name column
-    
+
     // Generate unique identifier
     var uniqueId = today + "|" + routeCode + "|" + associateName + "|" + vanId;
     row[10] = uniqueId;
@@ -146,7 +146,7 @@ function updateResultsWithDailyRoutes(resultsSheetName, dailyRoutesObj) {
 ```javascript
 // Create MM-DD-YY Results sheet with 11 columns:
 1. Route Code
-2. Service Type  
+2. Service Type
 3. DSP
 4. Wave
 5. Staging Location
@@ -165,7 +165,7 @@ function updateDailyDetails(resultsSheetName) {
   for (var i = 1; i < resultsData.length; i++) {
     // Create new Daily Details row with 24 columns
     var newRow = Array(24).fill("");
-    
+
     newRow[0] = today;                    // Date
     newRow[1] = routeCode;                // Route #
     newRow[2] = associateName;            // Name
@@ -179,7 +179,7 @@ function updateDailyDetails(resultsSheetName) {
     // Columns 10-23 left empty for form updates
     newRow[21] = uniqueId;                // Unique Identifier
   }
-  
+
   // Append to Daily Details (skip duplicates)
 }
 ```
@@ -187,7 +187,7 @@ function updateDailyDetails(resultsSheetName) {
 ### Step 9: Unassigned Vehicles
 ```javascript
 // Find vehicles not assigned
-var unassignedVans = operationalFleet.filter(v => 
+var unassignedVans = operationalFleet.filter(v =>
   !assignedVanIds.includes(v["Van ID"])
 );
 
@@ -229,13 +229,13 @@ graph TD
     A[Day of Ops.xlsx<br/>Routes & Requirements] --> D[Filter DSP=BWAY]
     B[Vehicle Status<br/>Available Vehicles] --> E[Filter Operational=Y]
     C[Daily Routes.xlsx<br/>Driver Assignments] --> F[Route-Driver Map]
-    
+
     D --> G[Allocate Vehicles<br/>by Service Type]
     E --> G
-    
+
     G --> H[Results Sheet<br/>11 columns]
     F --> H
-    
+
     H --> I[Daily Details<br/>24 columns]
     H --> J[Unassigned Vans<br/>15 columns]
 ```
@@ -257,11 +257,11 @@ SERVICE_TYPE_TO_VAN_TYPE = {
 def allocate_vehicles_to_routes(routes, vehicles):
     # 1. Group vehicles by type
     vehicle_groups = group_by_type(vehicles)
-    
+
     # 2. For each route (in order)
     for route in routes:
         required_type = get_van_type(route.service_type)
-        
+
         # 3. Assign first available of correct type
         if vehicle_groups[required_type]:
             vehicle = vehicle_groups[required_type].pop(0)

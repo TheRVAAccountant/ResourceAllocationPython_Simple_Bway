@@ -28,4 +28,3 @@ pyinstaller \
   "$MAIN_MODULE"
 
 echo "Built dist/$APP_NAME.app"
-

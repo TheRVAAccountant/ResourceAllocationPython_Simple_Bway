@@ -225,7 +225,7 @@ class StreamingExcelWriter:
     def __init__(self, file_path, chunk_size=1000):
         self.chunk_size = chunk_size
         self.buffer = []
-    
+
     def write_row(self, row_data):
         self.buffer.append(row_data)
         if len(self.buffer) >= self.chunk_size:

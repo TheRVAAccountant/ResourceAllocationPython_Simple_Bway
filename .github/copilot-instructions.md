@@ -12,7 +12,7 @@
 ```
 src/
 ├── core/                           # Business logic
-│   ├── allocation_engine.py        # General allocation algorithms  
+│   ├── allocation_engine.py        # General allocation algorithms
 │   ├── gas_compatible_allocator.py # GAS workflow implementation (PRIMARY)
 │   └── base_service.py             # Service base pattern
 ├── services/                       # Specialized services
@@ -45,7 +45,7 @@ The `GASCompatibleAllocator` in `src/core/gas_compatible_allocator.py` is the **
 # 3. Service Type → Van Type mapping:
 SERVICE_TYPE_TO_VAN_TYPE = {
     "Standard Parcel - Extra Large Van - US": "Extra Large",
-    "Standard Parcel - Large Van": "Large", 
+    "Standard Parcel - Large Van": "Large",
     "Standard Parcel Step Van - US": "Step Van"
 }
 # Special: "Nursery Route Level X" → "Large"
@@ -98,7 +98,7 @@ from src.core.gas_compatible_allocator import GASCompatibleAllocator
 allocator = GASCompatibleAllocator()
 result = allocator.run_full_allocation(
     day_of_ops_file="path/to/DayOfOps.xlsx",
-    daily_routes_file="path/to/DailyRoutes.xlsx", 
+    daily_routes_file="path/to/DailyRoutes.xlsx",
     vehicle_status_file="path/to/DailySummary.xlsx",  # Also output destination
     output_file="path/to/DailySummary.xlsx"           # Same file as input
 )
@@ -192,7 +192,7 @@ ACCENTS = {
 ## Performance Requirements
 
 - **Allocation Processing**: <30 seconds for 1000 routes
-- **Excel Loading**: <10 seconds for multi-file workflow  
+- **Excel Loading**: <10 seconds for multi-file workflow
 - **Memory**: <2GB peak for large datasets
 - **Test Coverage**: >95% for new code
 

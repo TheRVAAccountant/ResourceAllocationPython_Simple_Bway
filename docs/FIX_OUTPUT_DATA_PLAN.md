@@ -26,10 +26,10 @@ Modify `gas_compatible_allocator.py` to ensure the results file is created with 
 ```python
 def create_output_file(self, output_file: str, allocation_date: date = None):
     # ... existing code ...
-    
+
     # Write to Excel (Daily Details)
     results_path = self.write_results_to_excel(result, output_file)
-    
+
     # Return both the result and any results file path
     return result, results_path
 ```
@@ -41,7 +41,7 @@ Ensure this method returns the path to the created results file:
 ```python
 def write_results_to_excel(self, allocation_result: AllocationResult, output_file: str, create_results_file: bool = True):
     # ... existing code ...
-    
+
     # Create separate results file if requested
     results_file_path = None
     if success and create_results_file:
@@ -50,7 +50,7 @@ def write_results_to_excel(self, allocation_result: AllocationResult, output_fil
             logger.info(f"Created separate results file: {results_file_path}")
         except Exception as e:
             logger.error(f"Failed to create separate results file: {e}")
-    
+
     return results_file_path
 ```
 
@@ -80,7 +80,7 @@ In `create_allocation_result()`, ensure the metadata contains the actual allocat
 ```python
 def create_allocation_result(self) -> AllocationResult:
     # ... existing code ...
-    
+
     # Ensure metadata includes the actual allocation results
     metadata = {
         "detailed_results": self.allocation_results,  # This should be the actual data

@@ -1,6 +1,6 @@
 # Codebase Review: GUI Layer
 
-**Review Date:** October 3, 2025  
+**Review Date:** October 3, 2025
 **Focus:** GUI components and user interface (`src/gui/`)
 
 ---
@@ -9,8 +9,8 @@
 
 Modern desktop application built with **CustomTkinter** providing a complete GUI for resource allocation operations.
 
-**Technology:** CustomTkinter 5.2.0+ (modern Tkinter alternative)  
-**Architecture:** Tab-based interface with 7 main tabs  
+**Technology:** CustomTkinter 5.2.0+ (modern Tkinter alternative)
+**Architecture:** Tab-based interface with 7 main tabs
 **Theme Support:** Dark/Light mode switching
 
 ---
@@ -55,22 +55,22 @@ src/gui/
 ```python
 class ResourceAllocationGUI(ctk.CTk):
     """Main GUI application window."""
-    
+
     def __init__(self):
         super().__init__()
-        
+
         # Load company name from settings
         self.company_name = self._read_company_name_from_settings()
         self.title(self._compose_app_title(self.company_name))
         self.geometry("1400x1000")
         self.minsize(1200, 900)
-        
+
         # Set application icons
         self._set_app_icons()
-        
+
         # Initialize services
         self.initialize_services()
-        
+
         # Setup UI
         self.setup_ui()
 ```
@@ -87,7 +87,7 @@ def initialize_services(self):
     self.data_management_service = DataManagementService()
     self.associate_service = AssociateService()
     self.scorecard_service = ScorecardService()
-    
+
     # Initialize all services
     for service in [self.allocation_engine, self.excel_service, ...]:
         service.initialize()
@@ -98,11 +98,11 @@ def initialize_services(self):
 ```python
 def setup_ui(self):
     """Setup the UI with tabbed interface."""
-    
+
     # Create tab view
     self.tabview = ctk.CTkTabview(self)
     self.tabview.grid(row=1, column=0, sticky="nsew")
-    
+
     # Add tabs
     self.dashboard_tab = DashboardTab(self.tabview.add("📊 Dashboard"))
     self.allocation_tab = AllocationTab(self.tabview.add("🚗 Allocation"))
@@ -119,7 +119,7 @@ def setup_ui(self):
 
 ### 1. Dashboard Tab
 
-**Purpose:** Display allocation history and metrics  
+**Purpose:** Display allocation history and metrics
 **Size:** 23,398 bytes
 
 **Features:**
@@ -134,7 +134,7 @@ class DashboardTab:
     def load_history(self):
         """Load and display allocation history."""
         history = self.history_service.get_history(limit=10)
-        
+
         for entry in history:
             card = HistoryCard(
                 self.history_frame,
@@ -146,7 +146,7 @@ class DashboardTab:
 
 ### 2. Allocation Tab
 
-**Purpose:** Main allocation workflow interface  
+**Purpose:** Main allocation workflow interface
 **Size:** 46,629 bytes (largest tab)
 
 **Workflow:**
@@ -166,7 +166,7 @@ class DashboardTab:
 
 ### 3. Data Management Tab
 
-**Purpose:** CRUD operations for vehicles and drivers  
+**Purpose:** CRUD operations for vehicles and drivers
 **Size:** 44,345 bytes (second largest)
 
 **Features:**
@@ -178,7 +178,7 @@ class DashboardTab:
 
 ### 4. Scorecard Tab
 
-**Purpose:** View Amazon DSP performance scorecards  
+**Purpose:** View Amazon DSP performance scorecards
 **Size:** 15,513 bytes
 
 **Features:**
@@ -194,7 +194,7 @@ class ScorecardTab:
     def load_scorecard(self, pdf_path: str):
         """Load and display scorecard PDF."""
         scorecard_data = self.scorecard_service.load_scorecard(pdf_path)
-        
+
         # Display in Treeview
         for da in scorecard_data.delivery_associates:
             tier_color = self._get_tier_color(da.tier)
@@ -205,7 +205,7 @@ class ScorecardTab:
 
 ### 5. Settings Tab
 
-**Purpose:** Application configuration  
+**Purpose:** Application configuration
 **Size:** 34,367 bytes
 
 **Features:**
@@ -218,7 +218,7 @@ class ScorecardTab:
 
 ### 6. Log Viewer Tab
 
-**Purpose:** Real-time log monitoring  
+**Purpose:** Real-time log monitoring
 **Size:** 13,696 bytes
 
 **Features:**
@@ -229,7 +229,7 @@ class ScorecardTab:
 
 ### 7. Associate Listing Tab
 
-**Purpose:** Associate management  
+**Purpose:** Associate management
 **Size:** 19,982 bytes
 
 **Features:**
@@ -251,19 +251,19 @@ class ScorecardTab:
 ```python
 class HistoryCard(ctk.CTkFrame):
     """Card widget for allocation history."""
-    
+
     def __init__(self, parent, allocation_data: Dict, on_details_click):
         super().__init__(parent)
-        
+
         # Header with status badge
         self._create_header(allocation_data)
-        
+
         # Metrics row
         self._create_metrics(allocation_data)
-        
+
         # Details button
         self._create_details_button(on_details_click)
-        
+
         # Hover effects
         self.bind("<Enter>", self._on_hover_enter)
         self.bind("<Leave>", self._on_hover_leave)
@@ -383,10 +383,10 @@ def run_allocation(self):
 ```python
 def long_running_operation(self):
     """Run long operation without freezing UI."""
-    
+
     # Show progress dialog
     self.progress_dialog = ProgressDialog(self)
-    
+
     # Run in thread
     thread = threading.Thread(target=self._do_operation)
     thread.start()
@@ -394,7 +394,7 @@ def long_running_operation(self):
 def _do_operation(self):
     # Heavy work here
     result = self.allocator.allocate(...)
-    
+
     # Update UI on main thread
     self.after(0, lambda: self.update_results(result))
 ```
@@ -407,19 +407,19 @@ def _do_operation(self):
 ```python
 def _set_app_icons(self):
     """Set application icons for window and taskbar."""
-    
+
     try:
         # Resolve icon path (supports both source and PyInstaller)
         if getattr(sys, 'frozen', False):
             base_path = Path(sys._MEIPASS)
         else:
             base_path = Path(__file__).parent.parent.parent
-        
+
         icon_path = base_path / "assets" / "icons" / "amazon_package.ico"
-        
+
         if icon_path.exists():
             self.iconbitmap(str(icon_path))
-            
+
             # macOS Dock icon (AppKit)
             if sys.platform == 'darwin':
                 try:
@@ -478,7 +478,7 @@ def on_search_changed(self, event):
     """Debounce search input to avoid excessive filtering."""
     if hasattr(self, '_search_timer'):
         self.after_cancel(self._search_timer)
-    
+
     self._search_timer = self.after(300, self._perform_search)
 ```
 
@@ -492,28 +492,28 @@ For large data tables, consider virtual scrolling (not currently implemented).
 
 ### Strengths
 
-✅ **Clean tab-based architecture** - well-organized  
-✅ **Service integration** - proper separation of concerns  
-✅ **Theme support** - dark/light mode  
-✅ **Reusable components** - HistoryCard, modals  
-✅ **Good error handling** - user-friendly messages  
-✅ **Icon support** - cross-platform  
-✅ **Comprehensive tabs** - 7 functional tabs  
+✅ **Clean tab-based architecture** - well-organized
+✅ **Service integration** - proper separation of concerns
+✅ **Theme support** - dark/light mode
+✅ **Reusable components** - HistoryCard, modals
+✅ **Good error handling** - user-friendly messages
+✅ **Icon support** - cross-platform
+✅ **Comprehensive tabs** - 7 functional tabs
 
 ### Areas for Improvement
 
-⚠️ **No automated tests** - relies on manual testing  
-⚠️ **Large file sizes** - allocation_tab is 46KB  
-⚠️ **Threading** - could improve async handling  
-⚠️ **Accessibility** - no screen reader support  
+⚠️ **No automated tests** - relies on manual testing
+⚠️ **Large file sizes** - allocation_tab is 46KB
+⚠️ **Threading** - could improve async handling
+⚠️ **Accessibility** - no screen reader support
 
 ### Production Readiness
 
-🟢 **Overall:** Production-ready  
-🟢 **Usability:** Intuitive interface  
-🟢 **Stability:** Error handling in place  
-🟡 **Testing:** Manual only  
-🟢 **Documentation:** Good training guide  
+🟢 **Overall:** Production-ready
+🟢 **Usability:** Intuitive interface
+🟢 **Stability:** Error handling in place
+🟡 **Testing:** Manual only
+🟢 **Documentation:** Good training guide
 
 ---
 

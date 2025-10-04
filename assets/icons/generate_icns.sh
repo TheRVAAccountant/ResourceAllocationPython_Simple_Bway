@@ -31,4 +31,3 @@ sips -z 1024 1024 "$SRC_PNG" --out "$ICONSET_DIR/icon_1024x1024.png" >/dev/null
 
 iconutil -c icns "$ICONSET_DIR" -o "$OUT_ICNS"
 echo "Created $OUT_ICNS"
-

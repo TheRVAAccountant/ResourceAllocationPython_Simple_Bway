@@ -31,13 +31,13 @@ class DailyDetailsWriter(BaseService):
         self.excel_service = excel_service
         # Add optimized writer
         self.optimized_writer = OptimizedExcelWriter()
-        
+
     def append_to_existing_file(self, file_path, allocation_result, allocation_date, vehicle_log_dict=None):
         # Use optimized writer for bulk operations
         with self.optimized_writer.bulk_write_context(worksheet) as bulk:
             # Convert allocation results to DataFrame
             df = pd.DataFrame(allocation_result.allocations)
-            
+
             # Write using optimized method
             rows_written = self.optimized_writer.write_dataframe_optimized(
                 worksheet, df, start_row=next_row,
@@ -71,16 +71,16 @@ from src.utils.performance_monitor import get_monitor, track_performance
 class AllocationTab:
     def __init__(self):
         self.monitor = get_monitor()
-        
+
     @track_performance("allocation_workflow")
     def run_allocation(self):
         # Existing allocation code
         with self.monitor.measure_operation("excel_loading", {"files": 3}):
             # Load Excel files
-            
+
         with self.monitor.measure_operation("vehicle_allocation", {"routes": len(routes)}):
             # Run allocation
-            
+
         # Generate report after completion
         report = self.monitor.generate_report()
         logger.info(f"Performance report:\n{report}")
@@ -98,7 +98,7 @@ class AllocationTab:
     def run_allocation_async(self):
         """Run allocation in background thread."""
         self.progress_queue = Queue()
-        
+
         def allocation_worker():
             try:
                 # Run allocation with progress updates
@@ -108,21 +108,21 @@ class AllocationTab:
                 self.progress_queue.put(("complete", None))
             except Exception as e:
                 self.progress_queue.put(("error", str(e)))
-        
+
         # Start worker thread
         thread = threading.Thread(target=allocation_worker)
         thread.daemon = True
         thread.start()
-        
+
         # Update GUI with progress
         self.after(100, self.check_progress)
-    
+
     def check_progress(self):
         """Check progress from worker thread."""
         try:
             while not self.progress_queue.empty():
                 item = self.progress_queue.get_nowait()
-                
+
                 if isinstance(item, (int, float)):
                     # Update progress bar
                     self.progress_var.set(item)
@@ -134,7 +134,7 @@ class AllocationTab:
                     return
         except:
             pass
-        
+
         # Check again in 100ms
         self.after(100, self.check_progress)
 ```
@@ -168,19 +168,19 @@ from src.services.optimized_duplicate_validator import OptimizedDuplicateValidat
 
 def test_duplicate_validator_performance():
     validator = OptimizedDuplicateValidator()
-    
+
     # Create test data
     test_allocations = [
         {"Van ID": f"BW{i}", "Route Code": f"CX{i}"}
         for i in range(1000)
     ]
-    
+
     # Measure performance
     import time
     start = time.time()
     result = validator.validate_allocations(test_allocations)
     duration = time.time() - start
-    
+
     assert duration < 0.5  # Should complete in under 500ms
     assert result.is_valid
 ```
@@ -190,22 +190,22 @@ def test_duplicate_validator_performance():
 ```python
 def test_excel_bulk_write_performance():
     writer = OptimizedExcelWriter()
-    
+
     # Create large dataset
     df = pd.DataFrame({
         'A': range(10000),
         'B': [f'Value {i}' for i in range(10000)]
     })
-    
+
     # Test bulk write
     with tempfile.NamedTemporaryFile(suffix='.xlsx') as tmp:
         wb = Workbook()
         ws = wb.active
-        
+
         start = time.time()
         writer.write_dataframe_optimized(ws, df)
         duration = time.time() - start
-        
+
         assert duration < 5.0  # Should complete in under 5 seconds
 ```
 

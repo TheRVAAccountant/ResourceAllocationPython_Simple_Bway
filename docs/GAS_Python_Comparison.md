@@ -15,7 +15,7 @@ This document compares the Google Apps Script (GAS) and Python implementations o
   2. **Employees**: Driver information
      - Columns: Employee ID (Col A), Name (Col B), Location, Status, Priority, Experience, License Type, Notes
   3. **Daily Details**: Daily allocation records with thick border formatting
-     - Columns: Date, Van ID, VIN, GeoTab Code, Driver ID, Name, Route Type, Route Number, Start Time, End Time, 
+     - Columns: Date, Van ID, VIN, GeoTab Code, Driver ID, Name, Route Type, Route Number, Start Time, End Time,
        1:40pm, 3:00pm, 4:20pm, 5:40pm, 7:00pm, 8:20pm, Stops Remaining, Packages Remaining, Notes, Status, Unique Identifier
   4. **Route Types**: Route configuration
      - Columns: Route Type, Description, Priority, Max Stops, Max Packages

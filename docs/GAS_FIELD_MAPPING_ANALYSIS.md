@@ -40,7 +40,7 @@ This document provides a comprehensive comparison of how fields are populated in
 **GAS Behavior**: Directly uses Service Type from Day of Ops
 **Fix**: Pass through the actual Service Type value
 
-### 2. Type Field (Column 8) 
+### 2. Type Field (Column 8)
 **Current Python**: Uses vehicle_type (e.g., "Large", "Extra Large")
 **GAS Behavior**: Uses "Branded" or "Rental" from Vehicle Log
 **Fix**: Implement Vehicle Log lookup
@@ -61,11 +61,11 @@ function getVanType(serviceType) {
     "Standard Parcel - Large Van": "Large",
     "Standard Parcel Step Van - US": "Step Van"
   };
-  
+
   if (serviceType && serviceType.indexOf("Nursery Route Level") !== -1) {
     return "Large";
   }
-  
+
   return mapping[serviceType] || null;
 }
 

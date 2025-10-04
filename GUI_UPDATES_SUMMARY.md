@@ -63,7 +63,7 @@ The GUI now uses `GASCompatibleAllocator` which follows the exact GAS logic:
 ## Usage Instructions
 
 1. Select your Day of Ops file
-2. Select your Daily Routes file  
+2. Select your Daily Routes file
 3. Select your Daily Summary Log file (this will receive the output)
 4. Click "Run Allocation"
 5. Results will be written back to the Daily Summary Log

@@ -25,11 +25,11 @@ Implement validation to detect when the same vehicle is assigned to multiple rou
 ```python
 class DuplicateVehicleValidator:
     """Validates for duplicate vehicle assignments across routes/drivers."""
-    
+
     def validate_allocations(self, allocation_results: List[Dict]) -> ValidationResult:
         """
         Check for duplicate vehicle assignments.
-        
+
         Returns:
             ValidationResult with:
             - is_valid: False if duplicates found
@@ -136,7 +136,7 @@ Columns:
 ```python
 class UnassignedVehiclesWriter:
     """Manages creation and update of unassigned vehicles sheet."""
-    
+
     def create_unassigned_sheet(
         self,
         workbook: Workbook,
@@ -145,10 +145,10 @@ class UnassignedVehiclesWriter:
         allocation_date: date
     ) -> None:
         """Create or update unassigned vehicles sheet."""
-        
+
     def format_unassigned_sheet(self, worksheet: Worksheet) -> None:
         """Apply formatting to unassigned vehicles sheet."""
-        
+
     def calculate_days_since_assignment(
         self,
         vehicle_id: str,
@@ -260,10 +260,10 @@ class UnassignedVehiclesWriter:
 ```python
 def test_duplicate_detection():
     """Test duplicate vehicle assignment detection."""
-    
+
 def test_unassigned_sheet_creation():
     """Test unassigned vehicles sheet creation."""
-    
+
 def test_validation_warnings():
     """Test warning generation and display."""
 ```

@@ -170,7 +170,7 @@ python scripts/deployment_validation.py \
 # Enable production features
 export DEPLOYMENT_ENVIRONMENT=production
 export FEATURE_DUPLICATE_VALIDATION=enabled
-export FEATURE_UNASSIGNED_VEHICLES=enabled  
+export FEATURE_UNASSIGNED_VEHICLES=enabled
 export FEATURE_THICK_BORDERS=enabled
 
 # Start application monitoring
@@ -237,7 +237,7 @@ from src.services.daily_details_thick_borders import DailyDetailsThickBorders
 def validate_deployment():
     """Run comprehensive deployment validation."""
     print("🔍 Running deployment validation...")
-    
+
     # Test 1: Duplicate Validation
     try:
         validator = DuplicateVehicleValidator()
@@ -245,7 +245,7 @@ def validate_deployment():
     except Exception as e:
         print(f"❌ Duplicate vehicle validator: Failed - {e}")
         return False
-    
+
     # Test 2: Unassigned Vehicles
     try:
         writer = UnassignedVehiclesWriter()
@@ -253,7 +253,7 @@ def validate_deployment():
     except Exception as e:
         print(f"❌ Unassigned vehicles writer: Failed - {e}")
         return False
-    
+
     # Test 3: Thick Borders
     try:
         borders = DailyDetailsThickBorders()
@@ -261,7 +261,7 @@ def validate_deployment():
     except Exception as e:
         print(f"❌ Daily details thick borders: Failed - {e}")
         return False
-    
+
     print("🎉 All features validated successfully!")
     return True
 
@@ -286,7 +286,7 @@ from src.core.gas_compatible_allocator import GASCompatibleAllocator
 def test_performance():
     """Test performance with realistic dataset."""
     print("⚡ Running performance validation...")
-    
+
     # Create test data (1000 routes)
     test_data = pd.DataFrame({
         'Route_Code': [f'CX{i}' for i in range(1, 1001)],
@@ -294,29 +294,29 @@ def test_performance():
         'Service_Type': ['Standard Parcel - Large Van'] * 1000,
         'DSP': ['BWAY'] * 1000
     })
-    
+
     # Monitor memory usage
     process = psutil.Process()
     initial_memory = process.memory_info().rss / 1024 / 1024  # MB
-    
+
     # Run allocation
     start_time = time.time()
     allocator = GASCompatibleAllocator()
     # Simulate allocation process
     time.sleep(0.1)  # Placeholder for actual allocation
     end_time = time.time()
-    
+
     final_memory = process.memory_info().rss / 1024 / 1024  # MB
     execution_time = end_time - start_time
     memory_usage = final_memory - initial_memory
-    
+
     # Validate performance criteria
     time_ok = execution_time < 30.0  # Must complete in under 30 seconds
     memory_ok = memory_usage < 500   # Must use less than 500MB additional memory
-    
+
     print(f"⏱️  Execution time: {execution_time:.2f} seconds ({'✅' if time_ok else '❌'})")
     print(f"💾 Memory usage: {memory_usage:.2f} MB ({'✅' if memory_ok else '❌'})")
-    
+
     return time_ok and memory_ok
 
 if __name__ == "__main__":
@@ -364,33 +364,33 @@ from pathlib import Path
 
 class DeploymentMonitor:
     """Monitor application health post-deployment."""
-    
+
     def __init__(self):
         self.start_time = time.time()
         self.error_count = 0
         self.performance_metrics = []
-    
+
     def monitor_health(self):
         """Continuous health monitoring."""
         while True:
             try:
                 # Check application responsiveness
                 response_time = self.check_response_time()
-                
+
                 # Check memory usage
                 memory_usage = self.check_memory_usage()
-                
+
                 # Check error rates
                 error_rate = self.check_error_rate()
-                
+
                 # Log metrics
                 self.log_metrics(response_time, memory_usage, error_rate)
-                
+
                 # Alert if thresholds exceeded
                 self.check_alerts(response_time, memory_usage, error_rate)
-                
+
                 time.sleep(300)  # Check every 5 minutes
-                
+
             except Exception as e:
                 logging.error(f"Monitoring error: {e}")
                 time.sleep(60)  # Retry after 1 minute

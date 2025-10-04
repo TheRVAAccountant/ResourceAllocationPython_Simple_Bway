@@ -238,32 +238,32 @@ from src.services.excel_service import ExcelService
 def validate_rollback():
     """Validate that rollback was successful."""
     print("🔍 Validating rollback...")
-    
+
     try:
         # Test 1: Core allocation functionality
         allocator = GASCompatibleAllocator()
         print("✅ Core allocation engine: Working")
-        
-        # Test 2: Excel service functionality  
+
+        # Test 2: Excel service functionality
         excel_service = ExcelService()
         print("✅ Excel service: Working")
-        
+
         # Test 3: Configuration loading
         from src.services.configuration_service import ConfigurationService
         config = ConfigurationService()
         print("✅ Configuration service: Working")
-        
+
         # Test 4: Basic workflow
         print("✅ Basic workflow: Ready")
-        
+
         # Test 5: New features disabled
         if not config.get_feature_flag('FEATURE_DUPLICATE_VALIDATION', False):
             print("✅ New features properly disabled")
         else:
             print("⚠️  Warning: New features still enabled")
-            
+
         return True
-        
+
     except Exception as e:
         print(f"❌ Rollback validation failed: {e}")
         return False
@@ -286,14 +286,14 @@ from pathlib import Path
 def check_data_integrity():
     """Check that all data files are intact and readable."""
     print("🔍 Checking data integrity...")
-    
+
     # Check template files
     template_files = [
         "data/templates/daily_summary_template.xlsx",
         "data/templates/day_of_ops_template.xlsx",
         "data/templates/daily_routes_template.xlsx"
     ]
-    
+
     for file_path in template_files:
         try:
             if Path(file_path).exists():
@@ -305,7 +305,7 @@ def check_data_integrity():
         except Exception as e:
             print(f"❌ {file_path}: Corrupted - {e}")
             return False
-    
+
     print("✅ Data integrity check completed")
     return True
 
@@ -368,7 +368,7 @@ Any issues: [ISSUES OR NONE]
 
 #### Completion Notification
 ```
-TO: All Stakeholders  
+TO: All Stakeholders
 SUBJECT: Rollback Completed - Resource Management System
 
 The rollback has been completed successfully.
@@ -390,7 +390,7 @@ Root cause analysis will be conducted and results shared within 24 hours.
 TO: All Resource Allocation Users
 SUBJECT: Temporary Service Disruption - Resource Management System
 
-We are experiencing technical issues with the Resource Management System 
+We are experiencing technical issues with the Resource Management System
 and are working to resolve them quickly.
 
 What this means for you:
@@ -408,7 +408,7 @@ For urgent issues, please contact: [SUPPORT CONTACT]
 TO: All Resource Allocation Users
 SUBJECT: Service Restored - Resource Management System
 
-The Resource Management System has been restored and is now available 
+The Resource Management System has been restored and is now available
 for normal use.
 
 What's changed:
@@ -429,12 +429,12 @@ For any questions or issues, please contact: [SUPPORT CONTACT]
 
 #### 1. Data Collection (Immediate)
 - [ ] **Preserve failure logs** and system state snapshots
-- [ ] **Collect user reports** and error descriptions  
+- [ ] **Collect user reports** and error descriptions
 - [ ] **Document timeline** of events leading to rollback
 - [ ] **Gather performance metrics** from monitoring systems
 - [ ] **Interview key users** about experienced issues
 
-#### 2. Technical Analysis (Within 24 hours) 
+#### 2. Technical Analysis (Within 24 hours)
 - [ ] **Code review** of new features for defects
 - [ ] **Integration testing** gaps identification
 - [ ] **Performance analysis** of degradation causes
@@ -463,7 +463,7 @@ For any questions or issues, please contact: [SUPPORT CONTACT]
 ## Timeline of Events
 - [Time]: Initial deployment completed
 - [Time]: First issue reported
-- [Time]: Issue severity escalated  
+- [Time]: Issue severity escalated
 - [Time]: Rollback decision made
 - [Time]: Rollback initiated
 - [Time]: Rollback completed
@@ -534,7 +534,7 @@ For any questions or issues, please contact: [SUPPORT CONTACT]
 - [ ] **User interface** functioning normally
 - [ ] **Integration points** working correctly
 
-### Business Validation  
+### Business Validation
 - [ ] **Core workflows** operational
 - [ ] **User access** restored
 - [ ] **Data accuracy** verified
@@ -552,7 +552,7 @@ For any questions or issues, please contact: [SUPPORT CONTACT]
 
 ### Sign-off Requirements
 - [ ] **Technical Lead**: System functionality verified
-- [ ] **Business Owner**: User acceptance confirmed  
+- [ ] **Business Owner**: User acceptance confirmed
 - [ ] **Incident Commander**: Rollback completion validated
 - [ ] **Support Lead**: Support readiness confirmed
 

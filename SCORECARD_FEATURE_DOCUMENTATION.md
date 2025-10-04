@@ -75,21 +75,21 @@ Stores individual Delivery Associate performance metrics (21 fields total).
 @dataclass
 class DAWeeklyPerformance:
     """Weekly performance data for a Delivery Associate."""
-    
+
     # Identity
     rank: Optional[int]              # Rank in DSP (1-N)
     name: str                        # DA name
     transporter_id: str              # Amazon transporter ID
-    
+
     # Performance Tier
     tier: str                        # "Fantastic", "Great", "Fair", "Poor"
-    
+
     # Core Metrics
     delivered: Optional[int]         # Packages delivered
     dnr: Optional[int]               # Did Not Receive
     on_time_delivery: Optional[int]  # On-time deliveries
     delivery_completion: Optional[float]  # Completion percentage
-    
+
     # Quality Metrics
     photo_on_delivery: Optional[float]       # Photo compliance %
     concessions: Optional[int]               # Concession count
@@ -98,14 +98,14 @@ class DAWeeklyPerformance:
     speeding: Optional[int]                  # Speeding incidents
     distractions: Optional[int]              # Distraction events
     sign_in_compliance: Optional[float]      # Sign-in compliance %
-    
+
     # Route Metrics
     rescued: Optional[int]           # Times rescued
     rescued_by_other: Optional[int]  # Times rescued others
-    
+
     # Contact Info
     phone_number: Optional[str]      # DA phone number
-    
+
     # Additional Fields
     following_distance: Optional[int]         # Following too close events
     hard_braking_events: Optional[int]        # Hard braking count
@@ -422,12 +422,12 @@ def matches(da: DAWeeklyPerformance) -> bool:
     if search_query:
         if query not in da.name.lower() and query not in da.transporter_id.lower():
             return False
-    
+
     # Tier filter
     if tier_filter != "All":
         if da.tier != tier_filter:
             return False
-    
+
     return True
 ```
 
@@ -721,12 +721,12 @@ def test_load_real_scorecard():
     """Test loading actual scorecard PDF."""
     service = ScorecardService()
     metadata, associates = service.load_scorecard()
-    
+
     # Verify metadata
     assert metadata.station
     assert metadata.dsp_name
     assert metadata.week_number > 0
-    
+
     # Verify associates
     assert len(associates) > 0
     assert all(isinstance(da, DAWeeklyPerformance) for da in associates)

@@ -35,15 +35,15 @@ def run_full_allocation(
 ) -> AllocationResult:
     """Run the complete GAS-compatible allocation process."""
     logger.info("Starting GAS-compatible allocation process")
-    
+
     # ... Load all data ...
     # ... Perform allocation ...
     # ... Update with driver names ...
     # ... Identify unassigned vehicles ...
-    
+
     # Create allocation result
     result = self.create_allocation_result()
-    
+
     # Save to allocation history
     self.record_history(
         allocation_result=result,
@@ -53,12 +53,12 @@ def run_full_allocation(
             "vehicle_status": vehicle_status_file
         }
     )
-    
+
     # ⚠️ THE BUG: History save is BEFORE this conditional!
     # If output_file specified, write results
     if output_file:
         self.write_results_to_excel(result, output_file)
-    
+
     logger.info("GAS-compatible allocation complete")
     return result
 ```
@@ -127,4 +127,3 @@ This means either:
 ### Additional Investigation Needed
 
 Let me check the GUI allocation tab to see what method it actually calls:
-

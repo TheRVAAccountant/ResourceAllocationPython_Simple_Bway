@@ -207,7 +207,7 @@ def select_agents(task_description, complexity, timeline):
 - Deployment procedures and rollback plans
 - Operational monitoring and alerting systems
 
-### Business Artifacts  
+### Business Artifacts
 - Business requirements validation and acceptance
 - User training materials and documentation
 - Operational procedures and support processes

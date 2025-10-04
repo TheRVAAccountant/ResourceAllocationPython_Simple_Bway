@@ -148,11 +148,11 @@ class AllocationHistoryService(BaseService):
     def __init__(self):
         super().__init__()
         self._observers = []  # List of callback functions
-    
+
     def add_observer(self, callback: Callable[[], None]):
         """Register a callback to be notified on history updates."""
         self._observers.append(callback)
-    
+
     def _notify_observers(self):
         """Notify all observers of history update."""
         for callback in self._observers:
@@ -160,7 +160,7 @@ class AllocationHistoryService(BaseService):
                 callback()
             except Exception as e:
                 logger.error(f"Observer callback failed: {e}")
-    
+
     def save_allocation(self, ...):
         # ... existing save logic ...
         self._write_history(history)
@@ -244,9 +244,9 @@ self.history_service.add_observer(self.update_activity_history)
 # Add to class definition (after line 30)
 class AllocationHistoryService(BaseService):
     """Service for managing allocation history with persistent storage."""
-    
+
     HISTORY_FILE = Path("config/allocation_history.json")
-    
+
     def __init__(self, max_entries: int = 100, retention_days: int = 90, auto_cleanup: bool = True):
         """Initialize allocation history service with optional observer pattern."""
         super().__init__()
@@ -254,27 +254,27 @@ class AllocationHistoryService(BaseService):
         self.retention_days = retention_days
         self.auto_cleanup = auto_cleanup
         self._observers: List[Callable[[], None]] = []  # ✅ NEW
-    
+
     def add_observer(self, callback: Callable[[], None]) -> None:
         """Register a callback to be notified when history is updated.
-        
+
         Args:
             callback: Function to call when history changes (no args).
         """
         if callback not in self._observers:
             self._observers.append(callback)
             logger.debug(f"Added history observer: {callback.__name__}")
-    
+
     def remove_observer(self, callback: Callable[[], None]) -> None:
         """Unregister a callback.
-        
+
         Args:
             callback: Function to remove from observer list.
         """
         if callback in self._observers:
             self._observers.remove(callback)
             logger.debug(f"Removed history observer: {callback.__name__}")
-    
+
     def _notify_observers(self) -> None:
         """Notify all registered observers of a history update."""
         for callback in self._observers:
@@ -282,22 +282,22 @@ class AllocationHistoryService(BaseService):
                 callback()
             except Exception as e:
                 logger.error(f"Observer callback failed ({callback.__name__}): {e}")
-    
+
     # In save_allocation(), after line 178:
     def save_allocation(self, result: AllocationResult) -> None:
         """Save allocation result to history."""
         try:
             # ... existing save logic ...
-            
+
             # Write back to disk
             self._write_history(history)
-            
+
             logger.info(f"Saved allocation to history: {entry['request_id']} "
                        f"({allocated_count}/{total_routes} allocated, {allocation_rate:.1f}%)")
-            
+
             # Notify observers of update
             self._notify_observers()  # ✅ NEW
-        
+
         except Exception as e:
             logger.error(f"Failed to save allocation history: {e}")
             # Don't raise - history saving should not block allocations
@@ -310,20 +310,20 @@ class AllocationHistoryService(BaseService):
 def __init__(self, parent, allocation_engine, ...):
     """Initialize dashboard tab."""
     # ... existing code ...
-    
+
     # Initialize history service
     self.history_service = AllocationHistoryService()
     self.history_service.initialize()
-    
+
     # Register for history updates ✅ NEW
     self.history_service.add_observer(self._on_history_updated)
-    
+
     # ... rest of init ...
 
 # Add new method after update_activity_history():
 def _on_history_updated(self):
     """Called when allocation history is updated.
-    
+
     Refreshes the history display on the main GUI thread.
     This is called by the history service observer pattern.
     """
@@ -348,19 +348,19 @@ def test_observer_notification():
     """Test that observers are notified on save."""
     service = AllocationHistoryService()
     service.initialize()
-    
+
     # Track calls
     calls = []
     def observer():
         calls.append(True)
-    
+
     # Register observer
     service.add_observer(observer)
-    
+
     # Save allocation
     result = create_test_result()
     service.save_allocation(result)
-    
+
     # Verify observer was called
     assert len(calls) == 1
 
@@ -368,14 +368,14 @@ def test_multiple_observers():
     """Test multiple observers all get notified."""
     service = AllocationHistoryService()
     service.initialize()
-    
+
     calls1, calls2 = [], []
     service.add_observer(lambda: calls1.append(1))
     service.add_observer(lambda: calls2.append(1))
-    
+
     result = create_test_result()
     service.save_allocation(result)
-    
+
     assert len(calls1) == 1
     assert len(calls2) == 1
 
@@ -383,18 +383,18 @@ def test_observer_error_handling():
     """Test that one failing observer doesn't break others."""
     service = AllocationHistoryService()
     service.initialize()
-    
+
     def failing_observer():
         raise ValueError("Test error")
-    
+
     calls = []
     service.add_observer(failing_observer)
     service.add_observer(lambda: calls.append(1))
-    
+
     # Should not raise, second observer should still be called
     result = create_test_result()
     service.save_allocation(result)
-    
+
     assert len(calls) == 1  # Second observer worked
 ```
 
@@ -408,21 +408,21 @@ def test_dashboard_refreshes_on_allocation(tmp_path):
     # Setup
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    
+
     # Create Dashboard (mocked parent)
     parent_mock = MagicMock()
     parent_mock.after = lambda delay, func: func()  # Execute immediately
-    
+
     dashboard = DashboardTab(parent_mock, allocation_engine=None)
-    
+
     # Record initial history count
     initial_history = dashboard.history_service.get_history(limit=10)
     initial_count = len(initial_history)
-    
+
     # Save new allocation
     result = create_test_result()
     dashboard.history_service.save_allocation(result)
-    
+
     # Verify Dashboard's update_activity_history was called
     # (Check parent.after was called with update method)
     assert parent_mock.after.called

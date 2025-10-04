@@ -13,4 +13,3 @@
 export GITHUB_TOKEN="REPLACE_WITH_YOUR_PAT"
 # Optional: keep both env var names in sync if needed
 export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
-

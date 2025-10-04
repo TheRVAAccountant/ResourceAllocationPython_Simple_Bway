@@ -37,7 +37,7 @@
 ```python
 class AllocationOutputWriter(BaseService):
     """Service to write allocation results to separate output file."""
-    
+
     def create_results_file(
         self,
         allocation_result: AllocationResult,
@@ -68,7 +68,7 @@ def write_results_to_excel(self, allocation_result: AllocationResult, output_fil
     """Write allocation results - Daily Details only to summary log."""
     # Only update Daily Details in the Daily Summary Log
     # Remove results sheet creation
-    
+
 def create_results_output_file(self, allocation_result: AllocationResult) -> str:
     """Create separate results file in outputs folder."""
     # Use AllocationOutputWriter to create new file

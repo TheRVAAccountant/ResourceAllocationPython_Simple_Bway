@@ -6,7 +6,7 @@ This comprehensive checklist validates that the Resource Management System's new
 
 **Features Being Deployed:**
 1. Duplicate Vehicle Assignment Validation
-2. Unassigned Vehicles Sheet Management  
+2. Unassigned Vehicles Sheet Management
 3. Daily Details Thick Borders
 
 **Deployment Readiness**: ✅ **READY** (Pending final sign-offs)
@@ -18,7 +18,7 @@ This comprehensive checklist validates that the Resource Management System's new
 ### Code Quality and Testing
 - [ ] **Unit test coverage >95%** for all new features
   - Duplicate Vehicle Validator: 97% coverage ✅
-  - Unassigned Vehicles Writer: 96% coverage ✅  
+  - Unassigned Vehicles Writer: 96% coverage ✅
   - Daily Details Thick Borders: 95% coverage ✅
   - **Status**: ✅ COMPLETE
 

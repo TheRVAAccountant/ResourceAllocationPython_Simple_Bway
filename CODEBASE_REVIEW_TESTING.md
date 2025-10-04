@@ -1,6 +1,6 @@
 # Codebase Review: Testing & Quality Assurance
 
-**Review Date:** October 3, 2025  
+**Review Date:** October 3, 2025
 **Focus:** Test suite, coverage, and quality assurance
 
 ---
@@ -9,9 +9,9 @@
 
 Comprehensive testing infrastructure with **pytest** framework covering unit tests, integration tests, performance tests, and manual testing procedures.
 
-**Test Framework:** pytest 7.4.0+  
-**Coverage Tool:** pytest-cov 4.1.0+  
-**Coverage Reports:** Terminal, HTML, XML  
+**Test Framework:** pytest 7.4.0+
+**Coverage Tool:** pytest-cov 4.1.0+
+**Coverage Reports:** Terminal, HTML, XML
 
 ---
 
@@ -221,9 +221,9 @@ def temp_output_file():
     """Create temporary output file path."""
     with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
         path = f.name
-    
+
     yield path
-    
+
     # Cleanup
     if Path(path).exists():
         Path(path).unlink()
@@ -243,7 +243,7 @@ def temp_output_file():
 def test_no_duplicates(duplicate_validator, sample_allocation_results):
     """Test validation with no duplicates."""
     result = duplicate_validator.validate_assignments(sample_allocation_results)
-    
+
     assert result.is_valid
     assert result.duplicate_count == 0
     assert len(result.duplicates) == 0
@@ -252,7 +252,7 @@ def test_no_duplicates(duplicate_validator, sample_allocation_results):
 def test_with_duplicates(duplicate_validator, duplicate_allocation_results):
     """Test validation with duplicates."""
     result = duplicate_validator.validate_assignments(duplicate_allocation_results)
-    
+
     # In warning mode (not strict), is_valid = True but has duplicates
     assert result.duplicate_count == 2  # BW1 and BW2
     assert len(result.duplicates) == 2
@@ -263,9 +263,9 @@ def test_strict_mode_fails_on_duplicates(duplicate_allocation_results):
     """Test that strict mode fails validation on duplicates."""
     validator = DuplicateVehicleValidator(config={"strict_duplicate_validation": True})
     validator.initialize()
-    
+
     result = validator.validate_assignments(duplicate_allocation_results)
-    
+
     assert not result.is_valid
     assert result.duplicate_count > 0
 ```
@@ -282,22 +282,22 @@ def test_strict_mode_fails_on_duplicates(duplicate_allocation_results):
 def test_write_unassigned_sheet(unassigned_writer, temp_workbook, sample_unassigned_vehicles_df):
     """Test writing unassigned vehicles sheet."""
     allocation_date = date(2025, 10, 3)
-    
+
     unassigned_writer.write_unassigned_sheet(
         temp_workbook,
         sample_unassigned_vehicles_df,
         allocation_date
     )
-    
+
     # Verify sheet created
     expected_sheet_name = "Unassigned_2025-10-03"
     assert expected_sheet_name in temp_workbook.sheetnames
-    
+
     # Verify headers
     ws = temp_workbook[expected_sheet_name]
     assert ws.cell(1, 1).value == "Van ID"
     assert ws.cell(1, 2).value == "Type"
-    
+
     # Verify data
     assert ws.cell(2, 1).value == "BW10"
 
@@ -308,10 +308,10 @@ def test_sheet_formatting(unassigned_writer, temp_workbook, sample_unassigned_ve
         sample_unassigned_vehicles_df,
         date.today()
     )
-    
+
     ws = temp_workbook[list(temp_workbook.sheetnames)[-1]]
     header_cell = ws.cell(1, 1)
-    
+
     # Verify header formatting
     assert header_cell.font.bold == True
     assert header_cell.fill.start_color.rgb is not None
@@ -330,23 +330,23 @@ def test_apply_thick_borders():
     """Test thick border application."""
     wb = Workbook()
     ws = wb.active
-    
+
     service = DailyDetailsThickBorderService()
     service.initialize()
-    
+
     # Apply borders to a 5x5 region
     service.apply_thick_borders(ws, start_row=1, end_row=5, start_col=1, end_col=5)
-    
+
     # Verify top border
     top_left = ws.cell(1, 1)
     assert top_left.border.top.style == "thick"
     assert top_left.border.left.style == "thick"
-    
+
     # Verify bottom border
     bottom_right = ws.cell(5, 5)
     assert bottom_right.border.bottom.style == "thick"
     assert bottom_right.border.right.style == "thick"
-    
+
     # Verify interior cells have thin borders
     interior = ws.cell(3, 3)
     assert interior.border.top.style == "thin"
@@ -355,14 +355,14 @@ def test_multiple_sections():
     """Test multiple bordered sections don't interfere."""
     wb = Workbook()
     ws = wb.active
-    
+
     service = DailyDetailsThickBorderService()
     service.initialize()
-    
+
     # Apply two separate sections
     service.apply_thick_borders(ws, start_row=1, end_row=5, start_col=1, end_col=5)
     service.apply_thick_borders(ws, start_row=7, end_row=10, start_col=1, end_col=5)
-    
+
     # Verify gap row has no thick borders
     gap_cell = ws.cell(6, 1)
     assert gap_cell.border.top.style != "thick"
@@ -381,12 +381,12 @@ def test_multiple_sections():
 def test_date_format_consistency():
     """Test that all services use consistent date formatting."""
     test_date = date(2025, 10, 3)
-    
+
     # Test DailyDetailsWriter
     writer = DailyDetailsWriter()
     formatted = writer._format_date(test_date)
     assert formatted == "2025-10-03"
-    
+
     # Test UnassignedVehiclesWriter
     unassigned_writer = UnassignedVehiclesWriter()
     sheet_name = unassigned_writer._generate_sheet_name(test_date)
@@ -396,9 +396,9 @@ def test_unique_identifier_format():
     """Test unique identifier includes date."""
     writer = DailyDetailsWriter()
     test_date = date(2025, 10, 3)
-    
+
     identifier = writer._generate_unique_identifier(test_date, "CX123", "BW45")
-    
+
     assert identifier.startswith("20251003")
     assert "CX123" in identifier
     assert "BW45" in identifier
@@ -414,28 +414,28 @@ def test_unique_identifier_format():
 def test_service_type_mapping():
     """Test service type to van type mapping."""
     allocator = GASCompatibleAllocator()
-    
+
     service_type = "Standard Parcel - Extra Large Van - US"
     van_type = allocator.SERVICE_TYPE_TO_VAN_TYPE[service_type]
-    
+
     assert van_type == "Extra Large"
 
 def test_dsp_filtering():
     """Test that only BWAY routes are processed."""
     allocator = GASCompatibleAllocator()
-    
+
     # Create test data with multiple DSPs
     day_of_ops_data = pd.DataFrame([
         {"Route Code": "CX1", "DSP": "BWAY", "Service Type": "Standard Parcel - Large Van"},
         {"Route Code": "CX2", "DSP": "OTHER", "Service Type": "Standard Parcel - Large Van"},
         {"Route Code": "CX3", "DSP": "BWAY", "Service Type": "Standard Parcel - Large Van"},
     ])
-    
+
     allocator.day_of_ops_data = day_of_ops_data
-    
+
     # Filter for BWAY only
     bway_routes = allocator._filter_bway_routes()
-    
+
     assert len(bway_routes) == 2
     assert all(bway_routes["DSP"] == "BWAY")
 ```
@@ -455,28 +455,28 @@ def test_dsp_filtering():
 ```python
 def test_full_allocation_with_duplicates_and_unassigned():
     """Test complete allocation flow with edge cases."""
-    
+
     # Setup
     allocator = GASCompatibleAllocator()
     allocator.load_day_of_ops("test_data/day_of_ops.xlsx")
     allocator.load_daily_routes("test_data/daily_routes.xlsx")
     allocator.load_vehicle_status("test_data/vehicle_status.xlsx")
-    
+
     # Run allocation
     results = allocator.allocate_resources()
-    
+
     # Validate duplicates
     validator = DuplicateVehicleValidator()
     validator.initialize()
     validation = validator.validate_assignments(results)
-    
+
     # Assert expected behavior
     assert len(results) > 0
     assert validation.duplicate_count == 0  # Should catch duplicates
-    
+
     # Check unassigned
     assert len(allocator.unassigned_vehicles) >= 0
-    
+
     # Verify output file structure
     wb = allocator.generate_output_workbook()
     assert "Daily Details" in wb.sheetnames
@@ -494,31 +494,31 @@ def test_full_allocation_with_duplicates_and_unassigned():
 def test_missing_file_recovery():
     """Test graceful handling of missing input files."""
     allocator = GASCompatibleAllocator()
-    
+
     with pytest.raises(FileNotFoundError):
         allocator.load_day_of_ops("nonexistent_file.xlsx")
 
 def test_invalid_data_recovery():
     """Test recovery from invalid data formats."""
     allocator = GASCompatibleAllocator()
-    
+
     # Load file with missing required columns
     with pytest.raises(ValueError) as exc_info:
         allocator.load_day_of_ops("test_data/invalid_structure.xlsx")
-    
+
     assert "Missing required columns" in str(exc_info.value)
 
 def test_partial_allocation_completion():
     """Test that allocation completes even with some failures."""
     allocator = GASCompatibleAllocator()
-    
+
     # Setup with insufficient vehicles
     allocator.load_day_of_ops("test_data/high_demand.xlsx")
     allocator.load_vehicle_status("test_data/low_supply.xlsx")
-    
+
     # Should complete but have unassigned
     results = allocator.allocate_resources()
-    
+
     assert len(results) > 0
     assert len(allocator.unassigned_vehicles) > 0
 ```
@@ -537,44 +537,44 @@ def test_partial_allocation_completion():
 @pytest.mark.slow
 def test_large_dataset_allocation_performance():
     """Test allocation with 1000+ routes."""
-    
+
     # Generate large test dataset
     routes = generate_test_routes(count=1000)
     vehicles = generate_test_vehicles(count=800)
-    
+
     allocator = GASCompatibleAllocator()
     allocator.day_of_ops_data = routes
     allocator.vehicle_status_data = vehicles
-    
+
     # Measure performance
     start_time = time.time()
     results = allocator.allocate_resources()
     elapsed = time.time() - start_time
-    
+
     # Performance assertions
     assert elapsed < 30.0  # Should complete in under 30 seconds
     assert len(results) > 0
-    
+
     print(f"Allocation of 1000 routes took {elapsed:.2f} seconds")
 
 @pytest.mark.slow
 def test_memory_usage():
     """Test memory usage doesn't exceed limits."""
     import tracemalloc
-    
+
     tracemalloc.start()
-    
+
     # Large allocation
     allocator = GASCompatibleAllocator()
     # ... setup large dataset
     results = allocator.allocate_resources()
-    
+
     current, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
-    
+
     # Assert reasonable memory usage (< 500 MB)
     assert peak < 500 * 1024 * 1024
-    
+
     print(f"Peak memory usage: {peak / 1024 / 1024:.2f} MB")
 ```
 
@@ -695,10 +695,10 @@ def test_allocation():
     # Arrange
     allocator = GASCompatibleAllocator()
     allocator.load_data(test_files)
-    
+
     # Act
     results = allocator.allocate_resources()
-    
+
     # Assert
     assert len(results) > 0
     assert all(r["Van ID"] for r in results)
@@ -742,23 +742,23 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v2
-    
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
         python-version: '3.12'
-    
+
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
         pip install -e .[dev]
-    
+
     - name: Run tests
       run: pytest -m "not slow"
-    
+
     - name: Upload coverage
       uses: codecov/codecov-action@v2
       with:
@@ -860,27 +860,27 @@ pytest --cov=src --cov-fail-under=80
 
 ### Strengths
 
-✅ **Comprehensive fixtures** - Well-organized conftest.py  
-✅ **Good unit test coverage** - ~80%+ for core services  
-✅ **Integration tests** - Cover end-to-end flows  
-✅ **Performance tests** - Large dataset benchmarking  
-✅ **Manual test checklist** - Structured GUI testing  
-✅ **Multiple coverage formats** - HTML, XML, terminal  
+✅ **Comprehensive fixtures** - Well-organized conftest.py
+✅ **Good unit test coverage** - ~80%+ for core services
+✅ **Integration tests** - Cover end-to-end flows
+✅ **Performance tests** - Large dataset benchmarking
+✅ **Manual test checklist** - Structured GUI testing
+✅ **Multiple coverage formats** - HTML, XML, terminal
 
 ### Weaknesses
 
-⚠️ **No GUI automation** - Manual only  
-⚠️ **Limited performance tests** - Could expand  
-⚠️ **Some services untested** - Gap analysis needed  
-⚠️ **No CI/CD** - Manual test execution  
+⚠️ **No GUI automation** - Manual only
+⚠️ **Limited performance tests** - Could expand
+⚠️ **Some services untested** - Gap analysis needed
+⚠️ **No CI/CD** - Manual test execution
 
 ### Production Readiness
 
-🟢 **Core services:** Well-tested  
-🟢 **Integration flows:** Covered  
-🟡 **GUI:** Manual testing only  
-🟡 **Performance:** Basic coverage  
-🟢 **Test infrastructure:** Solid foundation  
+🟢 **Core services:** Well-tested
+🟢 **Integration flows:** Covered
+🟡 **GUI:** Manual testing only
+🟡 **Performance:** Basic coverage
+🟢 **Test infrastructure:** Solid foundation
 
 ---
 

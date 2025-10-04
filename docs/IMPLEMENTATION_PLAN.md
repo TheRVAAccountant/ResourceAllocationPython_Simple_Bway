@@ -14,7 +14,7 @@ class AllocationResult(BaseModel):
     # Existing fields
     allocations: dict[str, list[str]]
     unallocated_vehicles: list[str]
-    
+
     # New fields for GAS compatibility
     route_code: str          # Route # (e.g., "DUL4-5-002")
     service_type: str        # Route Type (e.g., "Standard")
@@ -37,7 +37,7 @@ class Vehicle:
     vin: str
     geotab_code: str
     brand_or_rental: str  # "Branded" or "Rental"
-    
+
 class Driver:
     # Add new fields
     route_type: str
@@ -53,26 +53,26 @@ class Driver:
 ```python
 class DailyDetailsWriter:
     """Handles writing allocation results to Daily Details sheet format."""
-    
+
     DAILY_DETAILS_COLUMNS = [
         "Date", "Van", "VIN", "GeoTab", "UID", "Unique Identifier",
         "Name", "Route Type", "Route", "1:40pm", "3:00pm", "4:20pm",
         "5:40pm", "7:00pm", "8:20pm", "CC", "PC", "Location", "Area",
         "CSNP", "RD", "EOD", "Comments", "Additional Column"
     ]
-    
+
     def __init__(self, excel_service):
         self.excel_service = excel_service
-        
+
     def write_daily_details(self, workbook, allocations, date):
         """Write allocations to Daily Details sheet."""
-        
+
     def create_results_sheet(self, workbook, allocations, date):
         """Create MM-DD-YY Results sheet."""
-        
+
     def create_unassigned_sheet(self, workbook, unassigned, date):
         """Create MM-DD-YY Available & Unassigned sheet."""
-        
+
     def generate_unique_identifier(self, date, route, device, van_id):
         """Generate unique identifier: Date|Route|Device|VanID."""
         return f"{date}|{route}|{device}|{van_id}"
@@ -101,7 +101,7 @@ DAILY_DETAILS_MAPPING = {
 
 # Results sheet columns (11 columns)
 RESULTS_COLUMNS = [
-    "Route Code", "Service Type", "DSP", "Wave", 
+    "Route Code", "Service Type", "DSP", "Wave",
     "Staging Location", "Van ID", "Device Name",
     "Van Type", "Operational", "Associate Name",
     "Unique Identifier"
@@ -117,12 +117,12 @@ Add methods for GAS-compatible operations:
 ```python
 def append_to_sheet(self, sheet_name, data, skip_duplicates=True):
     """Append data to existing sheet, checking for duplicates."""
-    
+
 def create_dated_sheet(self, base_name, date, suffix="Results"):
     """Create sheet with MM-DD-YY format."""
     sheet_name = f"{date.strftime('%m-%d-%y')} {suffix}"
     return self.create_sheet(sheet_name)
-    
+
 def apply_daily_details_formatting(self, sheet):
     """Apply GAS-style formatting to Daily Details."""
     # Teal headers (#46BDC6)
@@ -139,30 +139,30 @@ Modify `write_output` method:
 ```python
 def write_output(self, output_file, result, allocation_date):
     """Write allocation results in GAS-compatible format."""
-    
+
     # Option 1: Create new file with all sheets
     if self.create_new_file.get():
         self.excel_service.create_workbook()
         writer = DailyDetailsWriter(self.excel_service)
-        
+
         # Create Daily Details sheet
         writer.write_daily_details(workbook, result, allocation_date)
-        
+
         # Create dated Results sheet
         writer.create_results_sheet(workbook, result, allocation_date)
-        
+
         # Create Unassigned sheet if needed
         if result.unallocated_vehicles:
             writer.create_unassigned_sheet(workbook, result, allocation_date)
-            
+
     # Option 2: Append to existing Daily Summary Log
     else:
         self.excel_service.open_workbook(output_file)
         writer = DailyDetailsWriter(self.excel_service)
-        
+
         # Append to Daily Details
         writer.append_daily_details(workbook, result, allocation_date)
-        
+
         # Add new dated sheets
         writer.create_results_sheet(workbook, result, allocation_date)
 ```
@@ -227,13 +227,13 @@ def build_vehicle_dictionary(self, vehicles_df):
 ```python
 def test_daily_details_format():
     """Test Daily Details sheet has correct 24 columns."""
-    
+
 def test_unique_identifier_generation():
     """Test unique ID format: Date|Route|Device|VanID."""
-    
+
 def test_results_sheet_format():
     """Test Results sheet has correct 11 columns."""
-    
+
 def test_duplicate_prevention():
     """Test that duplicate allocations are prevented."""
 ```

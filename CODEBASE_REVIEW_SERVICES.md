@@ -1,6 +1,6 @@
 # Codebase Review: Service Layer
 
-**Review Date:** October 3, 2025  
+**Review Date:** October 3, 2025
 **Focus:** Service layer components (`src/services/`)
 
 ---
@@ -113,10 +113,10 @@ def write_to_daily_details(
     allocation_date: date
 ) -> None:
     """Write to Daily Details in APPEND mode.
-    
+
     CRITICAL: Must append to existing data, never overwrite.
     """
-    
+
     # Check if sheet exists
     if "Daily Details" in workbook.sheetnames:
         ws = workbook["Daily Details"]
@@ -129,12 +129,12 @@ def write_to_daily_details(
         self._write_headers(ws)
         next_row = 2  # Row 1 is headers
         logger.info("Created new Daily Details sheet")
-    
+
     # Write each allocation result as a row
     for result in allocation_results:
         self._write_daily_details_row(ws, next_row, result, allocation_date)
         next_row += 1
-    
+
     # Apply formatting
     self._apply_formatting(ws)
 ```
@@ -150,7 +150,7 @@ def _generate_unique_identifier(
     van_id: str
 ) -> str:
     """Generate unique identifier for each allocation.
-    
+
     Format: YYYYMMDD_ROUTECODE_VANID
     Example: 20251003_CX123_BW45
     """
@@ -177,7 +177,7 @@ self.rental_fill = PatternFill(
 def _apply_brand_highlighting(self, ws, row: int, van_id: str):
     """Apply highlighting based on van ownership."""
     van_id_cell = ws.cell(row=row, column=5)  # Column E (Van ID)
-    
+
     if van_id.startswith("BW"):  # Branded vehicles
         van_id_cell.fill = self.branded_fill
     else:  # Rental vehicles
@@ -238,7 +238,7 @@ class DuplicateAssignment:
     assignments: List[VehicleAssignment]
     conflict_level: str = "warning"  # "warning" or "error"
     resolution_suggestion: str = ""
-    
+
     def get_conflict_summary(self) -> str:
         routes = [a.route_code for a in self.assignments]
         drivers = [a.driver_name for a in self.assignments]
@@ -264,22 +264,22 @@ def validate_assignments(
     allocation_results: List[Dict[str, Any]]
 ) -> ValidationResult:
     """Validate allocation results for duplicates.
-    
+
     Args:
         allocation_results: List of allocation dictionaries
-    
+
     Returns:
         ValidationResult with duplicate information
     """
-    
+
     # Track assignments by vehicle ID
     vehicle_assignments = defaultdict(list)
-    
+
     for result in allocation_results:
         van_id = result.get("Van ID")
         if not van_id:
             continue
-        
+
         assignment = VehicleAssignment(
             vehicle_id=van_id,
             route_code=result.get("Route Code", ""),
@@ -288,9 +288,9 @@ def validate_assignments(
             wave=result.get("Wave", ""),
             staging_location=result.get("Staging Location", "")
         )
-        
+
         vehicle_assignments[van_id].append(assignment)
-    
+
     # Find duplicates
     duplicates = {}
     for van_id, assignments in vehicle_assignments.items():
@@ -300,10 +300,10 @@ def validate_assignments(
                 assignments=assignments,
                 conflict_level="error" if self.strict_mode else "warning"
             )
-    
+
     # Create result
     is_valid = (len(duplicates) == 0) or not self.strict_mode
-    
+
     return ValidationResult(
         is_valid=is_valid,
         duplicate_count=len(duplicates),
@@ -378,7 +378,7 @@ def save_allocation(
     error: Optional[str] = None
 ) -> None:
     """Save allocation to history.
-    
+
     Args:
         result: Allocation result object
         engine_name: Name of engine used
@@ -386,7 +386,7 @@ def save_allocation(
         duplicate_conflicts: List of duplicate vehicle conflicts
         error: Error message if allocation failed
     """
-    
+
     entry = {
         "allocation_id": str(uuid.uuid4()),
         "timestamp": datetime.now().isoformat(),
@@ -397,19 +397,19 @@ def save_allocation(
         "duplicate_conflicts": duplicate_conflicts,
         "error": error
     }
-    
+
     # Load existing history
     history = self._load_history_file()
-    
+
     # Add new entry
     history.append(entry)
-    
+
     # Rotate if needed (keep max 100 entries)
     history = self._rotate_history(history, max_entries=100)
-    
+
     # Save to file
     self._save_history_file(history)
-    
+
     logger.info(f"Saved allocation {entry['allocation_id']} to history")
 ```
 
@@ -421,15 +421,15 @@ def save_allocation(
 ```python
 def _extract_status(self, result: AllocationResult) -> str:
     """Safely extract status from result.
-    
+
     Handles both enum values and string values.
     """
     # Safe attribute check before accessing .value
     status = (
-        result.status.value 
-        if hasattr(result.status, 'value') 
-        else str(result.status) 
-        if hasattr(result, 'status') 
+        result.status.value
+        if hasattr(result.status, 'value')
+        else str(result.status)
+        if hasattr(result, 'status')
         else "UNKNOWN"
     )
     return status
@@ -447,27 +447,27 @@ def _rotate_history(
     max_age_days: int = 90
 ) -> List[Dict]:
     """Rotate history keeping recent entries.
-    
+
     Rules:
     1. Keep max 100 entries
     2. Keep entries from last 90 days
     3. Always keep most recent
     """
-    
+
     # Sort by timestamp (newest first)
     history.sort(key=lambda x: x['timestamp'], reverse=True)
-    
+
     # Keep max entries
     if len(history) > max_entries:
         history = history[:max_entries]
-    
+
     # Filter by age
     cutoff_date = datetime.now() - timedelta(days=max_age_days)
     history = [
         entry for entry in history
         if datetime.fromisoformat(entry['timestamp']) > cutoff_date
     ]
-    
+
     return history
 ```
 
@@ -476,7 +476,7 @@ def _rotate_history(
 ```python
 def get_statistics(self) -> Dict[str, Any]:
     """Get allocation history statistics.
-    
+
     Returns:
         Dictionary with statistics:
         - total_allocations
@@ -486,9 +486,9 @@ def get_statistics(self) -> Dict[str, Any]:
         - average_allocation_rate
         - average_routes_per_allocation
     """
-    
+
     history = self.get_history()
-    
+
     if not history:
         return {
             "total_allocations": 0,
@@ -496,10 +496,10 @@ def get_statistics(self) -> Dict[str, Any]:
             "failure_count": 0,
             "success_rate": 0.0,
         }
-    
+
     total = len(history)
     success = sum(1 for h in history if h['status'] == 'COMPLETED')
-    
+
     return {
         "total_allocations": total,
         "success_count": success,
@@ -535,7 +535,7 @@ def __init__(self, config: Optional[dict[str, Any]] = None):
 
 def initialize(self) -> None:
     """Initialize Excel service with xlwings if available."""
-    
+
     if self.use_xlwings and XLWINGS_AVAILABLE:
         try:
             self.app = xw.App(visible=self.excel_visible, add_book=False)
@@ -545,7 +545,7 @@ def initialize(self) -> None:
             logger.warning(f"Failed to initialize xlwings: {e}")
             self.use_xlwings = False
             # Fall back to openpyxl
-    
+
     self._initialized = True
 ```
 
@@ -556,11 +556,11 @@ def initialize(self) -> None:
 @error_handler
 def create_workbook(self, template: Optional[str] = None) -> Union[Any, Workbook]:
     """Create new workbook or load from template.
-    
+
     Returns:
         xlwings.Book or openpyxl.Workbook depending on backend
     """
-    
+
     if self.use_xlwings:
         if template:
             self.workbook = self.app.books.open(template)
@@ -571,17 +571,17 @@ def create_workbook(self, template: Optional[str] = None) -> Union[Any, Workbook
             self.workbook = load_workbook(template)
         else:
             self.workbook = Workbook()
-    
+
     return self.workbook
 
 def save_workbook(self, path: str) -> None:
     """Save workbook to file."""
-    
+
     if self.use_xlwings:
         self.workbook.save(path)
     else:
         self.workbook.save(path)
-    
+
     logger.info(f"Workbook saved to {path}")
 ```
 
@@ -594,26 +594,26 @@ def read_data(
     as_dataframe: bool = False
 ) -> Union[List[List[Any]], pd.DataFrame]:
     """Read data from sheet.
-    
+
     Args:
         sheet_name: Name of sheet to read
         as_dataframe: Return as pandas DataFrame
-    
+
     Returns:
         List of lists or DataFrame
     """
-    
+
     if self.use_xlwings:
         sheet = self.workbook.sheets[sheet_name]
         data = sheet.used_range.value
-        
+
         if as_dataframe:
             return pd.DataFrame(data[1:], columns=data[0])
         return data
     else:
         sheet = self.workbook[sheet_name]
         data = [[cell.value for cell in row] for row in sheet.iter_rows()]
-        
+
         if as_dataframe:
             return pd.DataFrame(data[1:], columns=data[0])
         return data
@@ -626,13 +626,13 @@ def write_data(
     start_col: int = 1
 ) -> None:
     """Write data to sheet."""
-    
+
     # Convert to appropriate format
     if isinstance(data, pd.DataFrame):
         data = data.values.tolist()
     elif isinstance(data, dict):
         data = [[k, v] for k, v in data.items()]
-    
+
     if self.use_xlwings:
         sheet = self.workbook.sheets[sheet_name]
         sheet.range((start_row, start_col)).value = data
@@ -689,7 +689,7 @@ def create_daily_section(
     title: str = "Daily Allocation"
 ) -> None:
     """Create a bordered daily section.
-    
+
     Args:
         sheet: Excel worksheet
         start_row: Starting row (1-indexed)
@@ -699,12 +699,12 @@ def create_daily_section(
         section_date: Date for the section
         title: Section title
     """
-    
+
     # Write section header
     header_cell = sheet.cell(row=start_row, column=start_col)
     header_cell.value = f"{title} - {section_date.strftime('%Y-%m-%d')}"
     header_cell.font = Font(bold=True, size=14)
-    
+
     # Apply thick border around entire section
     self._apply_thick_border_box(
         sheet,
@@ -713,7 +713,7 @@ def create_daily_section(
         end_row,
         end_col
     )
-    
+
     # Apply thin borders to interior cells
     for row in range(start_row + 1, end_row + 1):
         for col in range(start_col, end_col + 1):
@@ -737,7 +737,7 @@ class GASCompatibleAllocator:
         self.unassigned_writer = UnassignedVehiclesWriter()
         self.output_writer = AllocationOutputWriter()
         self.history_service = AllocationHistoryService()
-        
+
         # Initialize all
         self.duplicate_validator.initialize()
         self.unassigned_writer.initialize()
@@ -790,18 +790,18 @@ def validate_assignments_fast(
     allocation_results: List[Dict]
 ) -> ValidationResult:
     """Optimized duplicate validation using sets."""
-    
+
     # Use set for O(1) lookups
     seen_vehicles = set()
     duplicates = set()
-    
+
     for result in allocation_results:
         van_id = result.get("Van ID")
         if van_id in seen_vehicles:
             duplicates.add(van_id)
         else:
             seen_vehicles.add(van_id)
-    
+
     # Rest of validation...
 ```
 
@@ -819,16 +819,16 @@ def write_large_dataset(
     data: List[List[Any]]
 ) -> None:
     """Optimized write for large datasets."""
-    
+
     # Use openpyxl write-only mode
     from openpyxl import Workbook
     wb = Workbook(write_only=True)
     ws = wb.create_sheet()
-    
+
     # Batch write rows
     for row in data:
         ws.append(row)
-    
+
     # Single save operation
     wb.save("output.xlsx")
 ```
@@ -868,7 +868,7 @@ def save_allocation(self, ...):
 ```python
 def initialize_with_fallback(self):
     """Initialize with graceful fallback."""
-    
+
     try:
         # Attempt primary initialization
         self._init_xlwings()
@@ -884,7 +884,7 @@ def write_data(self, data):
     # Validate first
     if not self._validate_data(data):
         raise ValueError("Invalid data format")
-    
+
     # Then proceed
     self._write_to_file(data)
 ```
@@ -939,13 +939,13 @@ excel_visible = os.getenv("EXCEL_VISIBLE", "false").lower() == "true"
 
 ### Strengths
 
-✅ **24 well-organized services** with clear responsibilities  
-✅ **Consistent patterns** - all inherit from BaseService  
-✅ **Strong separation of concerns** - each service has one job  
-✅ **Comprehensive error handling** - try/except + logging  
-✅ **Performance optimizations** - dedicated optimized variants  
-✅ **Good testing coverage** - unit + integration tests  
-✅ **Documentation** - performance guide included  
+✅ **24 well-organized services** with clear responsibilities
+✅ **Consistent patterns** - all inherit from BaseService
+✅ **Strong separation of concerns** - each service has one job
+✅ **Comprehensive error handling** - try/except + logging
+✅ **Performance optimizations** - dedicated optimized variants
+✅ **Good testing coverage** - unit + integration tests
+✅ **Documentation** - performance guide included
 
 ### Service Dependencies
 
@@ -965,11 +965,11 @@ ExcelService
 
 ### Production Readiness
 
-🟢 **All critical services:** Production-ready  
-🟢 **Error handling:** Comprehensive  
-🟢 **Testing:** Good coverage  
-🟡 **Documentation:** Could add more API docs  
-🟢 **Performance:** Optimized variants available  
+🟢 **All critical services:** Production-ready
+🟢 **Error handling:** Comprehensive
+🟢 **Testing:** Good coverage
+🟡 **Documentation:** Could add more API docs
+🟢 **Performance:** Optimized variants available
 
 ---
 

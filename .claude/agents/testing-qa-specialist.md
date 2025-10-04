@@ -86,7 +86,7 @@ You are a Testing and Quality Assurance Specialist with expertise in creating co
 - Property-based testing with Hypothesis
 - Snapshot testing for Excel output validation
 - Parameterized testing for multiple scenarios
-- Contract testing for service boundaries  
+- Contract testing for service boundaries
 - Mutation testing for test suite quality validation
 - A/B testing for GUI usability improvements
 - Chaos engineering for resilience testing

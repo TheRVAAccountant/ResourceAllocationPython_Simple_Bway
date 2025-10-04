@@ -47,7 +47,7 @@ Comprehensive bug analysis and resolution workflow with root cause analysis and 
 - Data format problems, Excel crashes
 - Route to: **excel-integration-specialist**
 
-### GUI-Related Issues  
+### GUI-Related Issues
 - Application crashes, UI freezing, user interaction problems
 - Display issues, responsive design problems
 - Route to: **gui-ux-specialist**

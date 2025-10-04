@@ -50,17 +50,17 @@ def identify_unassigned_vehicles(self):
         logger.warning("No vehicle status data to identify unassigned")
         self.unassigned_vehicles = pd.DataFrame()
         return
-    
+
     # Get ALL operational vehicles (not just those considered for allocation)
     operational_vehicles = self.vehicle_status_data[
         self.vehicle_status_data["Opnal? Y/N"].astype(str).str.upper() == "Y"
     ].copy()
-    
+
     # Remove assigned vehicles
     unassigned = operational_vehicles[
         ~operational_vehicles["Van ID"].isin(self.assigned_van_ids)
     ].copy()
-    
+
     logger.info(f"Found {len(unassigned)} unassigned operational vehicles")
     self.unassigned_vehicles = unassigned
 ```
@@ -89,7 +89,7 @@ Ensure the writer properly handles all unassigned vehicles:
 def _create_unassigned_sheet(self, workbook, unassigned_vehicles, vehicle_log_dict, allocation_date):
     # Add debug logging
     logger.info(f"Creating unassigned sheet with {len(unassigned_vehicles)} vehicles")
-    
+
     # Ensure we're processing ALL unassigned vehicles
     for idx, vehicle in unassigned_vehicles.iterrows():
         # Write each vehicle to the sheet
@@ -102,7 +102,7 @@ Ensure vehicle log data is collected for ALL vehicles, not just allocated ones:
 def _build_vehicle_log_dict(self) -> Dict[str, Dict]:
     """Build complete vehicle log dictionary for ALL vehicles."""
     vehicle_log_dict = {}
-    
+
     # Include ALL vehicles from Vehicle Log/Status, not just allocated ones
     if self.vehicle_log_data is not None:
         for _, vehicle in self.vehicle_log_data.iterrows():

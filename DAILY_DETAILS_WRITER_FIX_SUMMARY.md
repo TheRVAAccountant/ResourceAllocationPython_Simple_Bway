@@ -23,9 +23,9 @@ def initialize(self) -> None:
     """Initialize the Daily Details writer service."""
     if self._initialized:
         return
-        
+
     logger.info("Initializing DailyDetailsWriter")
-    
+
     # Validate dependencies
     try:
         import openpyxl
@@ -33,7 +33,7 @@ def initialize(self) -> None:
     except ImportError as e:
         logger.error(f"Missing required dependency: {e}")
         raise
-    
+
     self._initialized = True
     logger.info("DailyDetailsWriter initialized successfully")
 
@@ -42,16 +42,16 @@ def validate(self) -> bool:
     if not self._initialized:
         logger.warning("DailyDetailsWriter not initialized")
         return False
-    
+
     # Validate column configurations
     if len(self.DAILY_DETAILS_COLUMNS) != 24:
         logger.error(f"Invalid DAILY_DETAILS_COLUMNS: expected 24, got {len(self.DAILY_DETAILS_COLUMNS)}")
         return False
-    
+
     if len(self.RESULTS_COLUMNS) != 11:
         logger.error(f"Invalid RESULTS_COLUMNS: expected 11, got {len(self.RESULTS_COLUMNS)}")
         return False
-    
+
     return True
 ```
 

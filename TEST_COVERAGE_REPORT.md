@@ -4,7 +4,7 @@
 
 Comprehensive test suites have been implemented for the three major new features:
 1. **Duplicate Vehicle Assignment Validation**
-2. **Unassigned Vehicles Sheet Management**  
+2. **Unassigned Vehicles Sheet Management**
 3. **Daily Details Thick Borders**
 
 This report details the testing strategy, coverage achieved, and production readiness validation.
@@ -206,7 +206,7 @@ pytest tests/unit/ -v --tb=short
 
 ### Coverage Report Highlights
 - **DuplicateVehicleValidator**: 97% statement coverage, 100% branch coverage
-- **UnassignedVehiclesWriter**: 96% statement coverage, 98% branch coverage  
+- **UnassignedVehiclesWriter**: 96% statement coverage, 98% branch coverage
 - **DailyDetailsThickBorders**: 95% statement coverage, 96% branch coverage
 - **Overall New Code**: >95% coverage across all metrics
 

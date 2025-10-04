@@ -47,7 +47,7 @@ Complete feature development workflow for Resource Management System with automa
 
 ## Agent Coordination Pattern
 ```
-resource-allocation-expert (lead) → 
+resource-allocation-expert (lead) →
 ├── excel-integration-specialist (if Excel changes needed)
 ├── gui-ux-specialist (if UI changes needed)
 └── coordination with:

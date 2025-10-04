@@ -1,6 +1,6 @@
 # Codebase Review: Core Business Logic
 
-**Review Date:** October 3, 2025  
+**Review Date:** October 3, 2025
 **Focus:** Core allocation engines and business logic layer
 
 ---
@@ -24,23 +24,23 @@ The core layer (`src/core/`) contains the business logic for resource allocation
 ```python
 class BaseService:
     """Base class for all services with lifecycle management."""
-    
+
     def __init__(self, config: Optional[dict[str, Any]] = None):
         self.config = config or {}
         self._initialized = False
-    
+
     def initialize(self) -> None:
         """Initialize the service. Override in subclasses."""
         pass
-    
+
     def validate(self) -> bool:
         """Validate service configuration. Override in subclasses."""
         return True
-    
+
     def cleanup(self) -> None:
         """Clean up resources. Override in subclasses."""
         self._initialized = False
-    
+
     def get_config(self, key: str, default: Any = None) -> Any:
         """Get configuration value with fallback."""
         return self.config.get(key, default)
@@ -83,18 +83,18 @@ All 24 services inherit from `BaseService`:
 ```python
 class AllocationEngine(BaseService):
     """Engine for managing vehicle allocation to drivers.
-    
+
     Implements core business logic for allocating vehicles to drivers
     based on various rules and constraints.
     """
-    
+
     def __init__(self, config: Optional[dict[str, Any]] = None):
         super().__init__(config)
         self.rules: list[AllocationRule] = []
         self.metrics = AllocationMetrics()
         self.allocation_history: list[AllocationResult] = []
         self.history_service = AllocationHistoryService()
-        
+
         # Configuration parameters
         self.max_vehicles_per_driver = self.get_config("max_vehicles_per_driver", 3)
         self.min_vehicles_per_driver = self.get_config("min_vehicles_per_driver", 1)
@@ -131,7 +131,7 @@ class AllocationEngine(BaseService):
 for rule in self.rules:
     if not rule.enabled:
         continue
-    
+
     if rule.action == "allocate_first":
         allocations, vehicles, drivers = self._allocate_priority(...)
     elif rule.action == "allocate_premium_vehicles":
@@ -147,29 +147,29 @@ for rule in self.rules:
 @error_handler
 def allocate(self, request: AllocationRequest) -> AllocationResult:
     """Perform vehicle allocation based on the request."""
-    
+
     # 1. Initialize tracking
     available_vehicles = request.vehicles.copy()
     available_drivers = request.drivers.copy()
     allocations = {}
-    
+
     # 2. Apply rules in priority order
     for rule in self.rules:
         allocations, available_vehicles, available_drivers = apply_rule(...)
-    
+
     # 3. Handle remaining unallocated
     unallocated_vehicles = available_vehicles
-    
+
     # 4. Calculate metrics
     processing_time = calculate_time()
     self._update_metrics(...)
-    
+
     # 5. Create result
     result = AllocationResult(...)
-    
+
     # 6. Save to history
     self.history_service.save_allocation(result, ...)
-    
+
     return result
 ```
 
@@ -185,22 +185,22 @@ def _allocate_priority(
     rule: AllocationRule
 ) -> tuple[dict, list[Vehicle], list[Driver]]:
     """Allocate vehicles to priority drivers first."""
-    
+
     priority_drivers = [d for d in drivers if d.priority == "high"]
-    
+
     for driver in priority_drivers:
         max_allowed = min(self.max_vehicles_per_driver, len(vehicles))
         driver_vehicles = []
-        
+
         for _ in range(max_allowed):
             if vehicles:
                 vehicle = vehicles.pop(0)
                 driver_vehicles.append(vehicle.vehicle_id)
-        
+
         if driver_vehicles:
             allocations[driver.driver_id] = driver_vehicles
             drivers.remove(driver)
-    
+
     return allocations, vehicles, drivers
 ```
 
@@ -213,24 +213,24 @@ def _distribute_evenly(
     drivers: list[Driver]
 ) -> tuple[dict, list[Vehicle], list[Driver]]:
     """Distribute vehicles evenly among drivers."""
-    
+
     if not drivers or not vehicles:
         return allocations, vehicles, drivers
-    
+
     # Calculate vehicles per driver
     vehicles_per_driver = max(
         self.min_vehicles_per_driver,
         len(vehicles) // len(drivers)
     )
     vehicles_per_driver = min(vehicles_per_driver, self.max_vehicles_per_driver)
-    
+
     # Allocate to each driver
     for driver in drivers[:]:
         if not vehicles:
             break
-        
+
         # ... allocation logic
-    
+
     return allocations, vehicles, drivers
 ```
 
@@ -240,7 +240,7 @@ def _distribute_evenly(
 ```python
 class AllocationMetrics(BaseModel):
     """Metrics for allocation performance."""
-    
+
     total_vehicles: int = 0
     allocated_vehicles: int = 0
     unallocated_vehicles: int = 0
@@ -257,7 +257,7 @@ class AllocationMetrics(BaseModel):
 def _update_metrics(self, request, allocations, unallocated, processing_time):
     total_vehicles = len(request.vehicles)
     allocated_vehicles = sum(len(v) for v in allocations.values())
-    
+
     self.metrics = AllocationMetrics(
         total_vehicles=total_vehicles,
         allocated_vehicles=allocated_vehicles,
@@ -277,22 +277,22 @@ def _update_metrics(self, request, allocations, unallocated, processing_time):
 ```python
 def validate_allocation(self, result: AllocationResult) -> bool:
     """Validate an allocation result."""
-    
+
     # Check for duplicate vehicle assignments
     all_vehicles = []
     for vehicles in result.allocations.values():
         all_vehicles.extend(vehicles)
-    
+
     if len(all_vehicles) != len(set(all_vehicles)):
         logger.error("Duplicate vehicle assignments detected")
         return False
-    
+
     # Check vehicle count constraints
     for driver_id, vehicles in result.allocations.items():
         if len(vehicles) > self.max_vehicles_per_driver:
             logger.error(f"Driver {driver_id} has too many vehicles")
             return False
-    
+
     return True
 ```
 
@@ -338,7 +338,7 @@ SERVICE_TYPE_TO_VAN_TYPE = {
    ```python
    def load_day_of_ops(self, file_path: str, sheet_name: str = "Solution") -> pd.DataFrame:
        """Load Day of Ops file.
-       
+
        Expected columns:
        - Route Code
        - Service Type
@@ -352,7 +352,7 @@ SERVICE_TYPE_TO_VAN_TYPE = {
    ```python
    def load_daily_routes(self, file_path: str, sheet_name: str = "Routes") -> pd.DataFrame:
        """Load Daily Routes file.
-       
+
        Expected columns:
        - Route code (or Route Code)
        - Driver name (or Driver Name)
@@ -363,7 +363,7 @@ SERVICE_TYPE_TO_VAN_TYPE = {
    ```python
    def load_vehicle_status(self, file_path: str, sheet_name: str = "Vehicles") -> pd.DataFrame:
        """Load Vehicle Status file.
-       
+
        Expected columns:
        - Van ID
        - Type (van type)
@@ -375,7 +375,7 @@ SERVICE_TYPE_TO_VAN_TYPE = {
    ```python
    def load_vehicle_log(self, file_path: str) -> pd.DataFrame:
        """Load Vehicle Log file for GeoTab and VIN data.
-       
+
        Expected columns:
        - Van ID
        - GeoTab Code
@@ -389,7 +389,7 @@ SERVICE_TYPE_TO_VAN_TYPE = {
 ```python
 def allocate_resources(self) -> List[Dict[str, Any]]:
     """Perform resource allocation matching GAS logic.
-    
+
     Steps:
     1. Merge Day of Ops with Daily Routes (match Route Code)
     2. Filter for DSP = "BWAY" only
@@ -398,7 +398,7 @@ def allocate_resources(self) -> List[Dict[str, Any]]:
     5. Assign first available matching vehicle
     6. Track assigned vehicles to prevent duplicates
     """
-    
+
     # 1. Merge files
     merged_data = pd.merge(
         self.day_of_ops_data,
@@ -406,33 +406,33 @@ def allocate_resources(self) -> List[Dict[str, Any]]:
         on="Route Code",
         how="left"
     )
-    
+
     # 2. Filter BWAY routes only
     bway_routes = merged_data[merged_data["DSP"] == "BWAY"].copy()
-    
+
     # 3. Map service types
     bway_routes["Van Type Needed"] = bway_routes["Service Type"].map(
         self.SERVICE_TYPE_TO_VAN_TYPE
     )
-    
+
     # 4. Allocate vehicles
     allocation_results = []
-    
+
     for _, route in bway_routes.iterrows():
         van_type_needed = route["Van Type Needed"]
-        
+
         # Find available vehicle of matching type
         available_vehicles = self.vehicle_status_data[
             (self.vehicle_status_data["Type"] == van_type_needed) &
             (self.vehicle_status_data["Opnal? Y/N"] == "Y") &
             (~self.vehicle_status_data["Van ID"].isin(self.assigned_van_ids))
         ]
-        
+
         if not available_vehicles.empty:
             # Assign first available
             vehicle = available_vehicles.iloc[0]
             self.assigned_van_ids.append(vehicle["Van ID"])
-            
+
             allocation_results.append({
                 "Route Code": route["Route Code"],
                 "Van ID": vehicle["Van ID"],
@@ -442,7 +442,7 @@ def allocate_resources(self) -> List[Dict[str, Any]]:
         else:
             # Track unassigned
             self.unassigned_vehicles.append(route)
-    
+
     return allocation_results
 ```
 
@@ -470,10 +470,10 @@ def allocate_resources(self) -> List[Dict[str, Any]]:
 ```python
 def write_to_daily_details(self, wb: Workbook, allocation_results: List[Dict]):
     """Write allocation results to Daily Details sheet in APPEND mode.
-    
+
     This is CRITICAL - we must APPEND to existing data, not overwrite.
     """
-    
+
     if "Daily Details" in wb.sheetnames:
         ws = wb["Daily Details"]
         # Find next empty row
@@ -483,7 +483,7 @@ def write_to_daily_details(self, wb: Workbook, allocation_results: List[Dict]):
         # Write headers
         self._write_headers(ws)
         next_row = 2
-    
+
     # Append new data starting at next_row
     for result in allocation_results:
         self._write_row(ws, next_row, result)
@@ -546,7 +546,7 @@ def write_to_daily_details(self, wb: Workbook, allocation_results: List[Dict]):
 ```python
 class Vehicle(BaseModel):
     """Represents a vehicle in the allocation system."""
-    
+
     vehicle_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     vehicle_number: str
     vehicle_type: VehicleType = VehicleType.STANDARD
@@ -560,7 +560,7 @@ class Vehicle(BaseModel):
     assigned_driver: Optional[str] = None
     notes: Optional[str] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
-    
+
     @validator("vehicle_number")
     def validate_vehicle_number(cls, v):
         if not v or len(v) < 3:
@@ -579,7 +579,7 @@ class Vehicle(BaseModel):
 ```python
 class Driver(BaseModel):
     """Represents a driver in the allocation system."""
-    
+
     driver_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     employee_id: str
     name: str
@@ -603,7 +603,7 @@ class Driver(BaseModel):
 ```python
 class AllocationRequest(BaseModel):
     """Represents an allocation request."""
-    
+
     request_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     vehicles: list[Vehicle]
     drivers: list[Driver]
@@ -614,13 +614,13 @@ class AllocationRequest(BaseModel):
     constraints: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     @validator("vehicles")
     def validate_vehicles(cls, v):
         if not v:
             raise ValueError("At least one vehicle is required")
         return v
-    
+
     @validator("drivers")
     def validate_drivers(cls, v):
         if not v:
@@ -633,7 +633,7 @@ class AllocationRequest(BaseModel):
 ```python
 class AllocationResult(BaseModel):
     """Represents the result of an allocation."""
-    
+
     request_id: str
     allocations: dict[str, list[str]]  # driver_id -> list of vehicle_ids
     unallocated_vehicles: list[str]
@@ -644,7 +644,7 @@ class AllocationResult(BaseModel):
     errors: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
-    
+
     def get_allocation_summary(self) -> dict[str, Any]:
         """Get a summary of the allocation result."""
         total_allocated = sum(len(vehicles) for vehicles in self.allocations.values())
@@ -796,28 +796,28 @@ class AllocationResult(BaseModel):
 
 ### Strengths
 
-✅ **Two engines for different needs** - Generic vs. GAS-compatible  
-✅ **Strong type safety** - Pydantic models throughout  
-✅ **Clear business rules** - Well-documented allocation logic  
-✅ **Comprehensive validation** - Pre and post-allocation checks  
-✅ **Excellent error handling** - Graceful failures with logging  
-✅ **History tracking** - All allocations saved for auditing  
-✅ **Performance monitoring** - @timer decorator on key methods  
+✅ **Two engines for different needs** - Generic vs. GAS-compatible
+✅ **Strong type safety** - Pydantic models throughout
+✅ **Clear business rules** - Well-documented allocation logic
+✅ **Comprehensive validation** - Pre and post-allocation checks
+✅ **Excellent error handling** - Graceful failures with logging
+✅ **History tracking** - All allocations saved for auditing
+✅ **Performance monitoring** - @timer decorator on key methods
 
 ### Areas for Improvement
 
-⚠️ **AllocationEngine may be deprecated** - GAS allocator is primary  
-⚠️ **Rule configuration not externalized** - Rules are hard-coded  
-⚠️ **Limited optimization** - GAS allocator is deliberately simple  
-⚠️ **No async support** - All operations are synchronous  
+⚠️ **AllocationEngine may be deprecated** - GAS allocator is primary
+⚠️ **Rule configuration not externalized** - Rules are hard-coded
+⚠️ **Limited optimization** - GAS allocator is deliberately simple
+⚠️ **No async support** - All operations are synchronous
 
 ### Production Readiness
 
-🟢 **GASCompatibleAllocator:** Production-ready, actively used  
-🟡 **AllocationEngine:** Demonstration/legacy, not production  
-🟢 **Data Models:** Solid, well-validated  
-🟢 **Error Handling:** Comprehensive  
-🟢 **Testing:** Good coverage (unit + integration)  
+🟢 **GASCompatibleAllocator:** Production-ready, actively used
+🟡 **AllocationEngine:** Demonstration/legacy, not production
+🟢 **Data Models:** Solid, well-validated
+🟢 **Error Handling:** Comprehensive
+🟢 **Testing:** Good coverage (unit + integration)
 
 ---
 

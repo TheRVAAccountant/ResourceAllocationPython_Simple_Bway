@@ -49,7 +49,7 @@ Daily Summary Error Handling    Driver Mapping       Unassigned      GUI Updates
 1. **Priority-Based Assignment**: High-priority drivers get first choice of available vehicles
 2. **Service Type Matching**: Match vehicle types to service requirements
    - "Standard Parcel - Extra Large Van - US" → "Extra Large" vehicles
-   - "Standard Parcel - Large Van" → "Large" vehicles  
+   - "Standard Parcel - Large Van" → "Large" vehicles
    - "Standard Parcel Step Van - US" → "Step Van" vehicles
    - "Nursery Route Level X" → "Large" vehicles
 3. **Experience Weighting**: Experienced drivers get premium vehicles
@@ -66,7 +66,7 @@ Daily Summary Error Handling    Driver Mapping       Unassigned      GUI Updates
 - Updates Daily Summary Log with results (no separate output file)
 - Creates/updates three sheets:
   1. **Daily Details**: Historical accumulation of all allocations
-  2. **MM-DD-YY Results**: Today's allocation results  
+  2. **MM-DD-YY Results**: Today's allocation results
   3. **MM-DD-YY Available & Unassigned**: Unassigned vehicles
 
 ### Key Business Constraints

@@ -7,11 +7,11 @@ The Daily Details sheet was showing empty values for the GeoTab Code and Type co
 
 ### 1. GeoTab Code Field
 - **Issue**: Column name mismatch between Vehicle Log sheet and expected column name
-- **Vehicle Log has**: "GeoTab" 
+- **Vehicle Log has**: "GeoTab"
 - **Code expected**: "GeoTab Code"
 - **Result**: Field lookup failed, leaving column empty
 
-### 2. Type Field  
+### 2. Type Field
 - **Issue**: Wrong data source being used
 - **Current behavior**: Using vehicle type ("Large", "Extra Large")
 - **Expected behavior**: Using ownership type ("Branded" or "Rental") from Vehicle Log
@@ -25,29 +25,29 @@ Modified `src/core/gas_compatible_allocator.py` to include intelligent column ma
 ```python
 def load_vehicle_log(self, file_path: str, sheet_name: str = "Vehicle Log") -> pd.DataFrame:
     """Load Vehicle Log with intelligent column mapping."""
-    
+
     # Normalize column names to lowercase for comparison
     df.columns = df.columns.str.strip()
     normalized_cols = {col: col.lower().replace(' ', '_') for col in df.columns}
-    
+
     # Create mapping for expected columns
     column_mapping = {}
-    
+
     # Map Van ID variations
     for orig_col, norm_col in normalized_cols.items():
         if norm_col in ['van_id', 'vanid', 'vehicle_id']:
             column_mapping[orig_col] = 'Van ID'
-            
-    # Map VIN variations  
+
+    # Map VIN variations
     for orig_col, norm_col in normalized_cols.items():
         if norm_col == 'vin':
             column_mapping[orig_col] = 'VIN'
-            
+
     # Map GeoTab variations - THIS IS THE KEY FIX
     for orig_col, norm_col in normalized_cols.items():
         if norm_col in ['geotab', 'geo_tab', 'geotab_code']:
             column_mapping[orig_col] = 'GeoTab'
-            
+
     # Map Branded or Rental variations
     for orig_col, norm_col in normalized_cols.items():
         if norm_col in ['branded_or_rental', 'type', 'ownership']:

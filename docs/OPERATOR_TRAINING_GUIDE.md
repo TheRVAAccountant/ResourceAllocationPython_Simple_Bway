@@ -60,7 +60,7 @@ Vehicle BW101 is assigned to:
   • Route CX3 (Driver: Mike Johnson)
 
 Vehicle BW205 is assigned to:
-  • Route CX7 (Driver: Sarah Wilson)  
+  • Route CX7 (Driver: Sarah Wilson)
   • Route CX9 (Driver: Tom Brown)
 
 What would you like to do?
@@ -176,11 +176,11 @@ Utilization Rate: 93.7%
 
 1. **Generate Report**: Run allocation on practice file `Training_UnassignedExample.xlsx`
 2. **Review Results**: Examine the Unassigned Vehicles sheet created
-3. **Analyze Data**: 
+3. **Analyze Data**:
    - How many vehicles are truly available for assignment?
    - Which vehicles are in maintenance?
    - What's the current fleet utilization rate?
-4. **Plan Actions**: 
+4. **Plan Actions**:
    - Identify vehicles that could take additional routes
    - Note vehicles needing maintenance coordination
 
@@ -268,7 +268,7 @@ Date        Route    Van ID    Driver
 
 1. **Open Historical Data**: Look at Daily Details sheet with 2+ weeks of data
 2. **Observe Grouping**: Notice thick borders separating each date
-3. **Navigation Practice**: 
+3. **Navigation Practice**:
    - Find allocations for a specific date
    - Count routes processed per day
    - Identify patterns in vehicle assignments
@@ -297,7 +297,7 @@ Date        Route    Van ID    Driver
 
 ### Issue 1: Duplicate Warning Not Appearing
 **Symptoms**: Expected duplicates but no warning dialog
-**Causes**: 
+**Causes**:
 - Van IDs formatted incorrectly (spaces, wrong format)
 - Data not properly loaded
 - Feature disabled
@@ -374,7 +374,7 @@ Date        Route    Van ID    Driver
 3. **Choose: Review/Fix, Proceed, or Cancel**
 4. **Fix duplicates in Excel files when possible**
 
-### Unassigned Vehicles Tracking  
+### Unassigned Vehicles Tracking
 1. **Complete allocation process**
 2. **Review new "Unassigned Vehicles" sheet**
 3. **Check utilization rate and individual vehicles**
@@ -444,7 +444,7 @@ To complete your training certification:
 
 > **"The duplicate detection saved me from a major mistake on my second day using it. A vehicle would have been double-booked to two different cities!"** - Sarah, Operations Specialist
 
-> **"I love the unassigned vehicles report. I can see immediately which vehicles are available for rush orders."** - Mike, Fleet Coordinator  
+> **"I love the unassigned vehicles report. I can see immediately which vehicles are available for rush orders."** - Mike, Fleet Coordinator
 
 > **"The thick borders make it so much easier to find specific dates in our historical data. Reports look much more professional too."** - Jennifer, Operations Manager
 

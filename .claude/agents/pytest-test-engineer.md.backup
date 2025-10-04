@@ -81,33 +81,33 @@ from src.module import function_under_test
 
 class TestFunctionName:
     """Test suite for function_name functionality."""
-    
+
     @pytest.fixture
     def setup_data(self) -> dict[str, Any]:
         """Provide test data for function tests."""
         return {"key": "value"}
-    
+
     def test_function_normal_operation_returns_expected(self, setup_data):
         """Test that function returns expected value under normal conditions."""
         # Arrange
         expected = "expected_result"
-        
+
         # Act
         result = function_under_test(setup_data)
-        
+
         # Assert
         assert result == expected
         assert isinstance(result, str)
-    
+
     def test_function_invalid_input_raises_exception(self):
         """Test that function raises appropriate exception for invalid input."""
         # Arrange
         invalid_input = None
-        
+
         # Act & Assert
         with pytest.raises(ValueError, match="Input cannot be None"):
             function_under_test(invalid_input)
-    
+
     @pytest.mark.parametrize("input_val,expected", [
         ("test1", "result1"),
         ("test2", "result2"),

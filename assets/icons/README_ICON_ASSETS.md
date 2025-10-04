@@ -15,4 +15,3 @@ Generate app.icns from a 1024 PNG on macOS:
 Notes:
 - If app.icns is missing, the app falls back to app_1024.png; if both are missing, it falls back to the existing .ico (blurrier).
 - For best results, use a 1024×1024 source with transparent background (PNG).
-
