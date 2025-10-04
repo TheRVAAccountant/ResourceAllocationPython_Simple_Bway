@@ -9,6 +9,18 @@ from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Table, TableStyle
 
 
+def _print_status(*parts: object) -> None:
+    """Print status messages while avoiding Unicode encoding issues."""
+    try:
+        print(*parts)
+    except UnicodeEncodeError:
+        safe_parts = []
+        for part in parts:
+            text = str(part)
+            safe_parts.append(text.encode("ascii", "replace").decode("ascii"))
+        print(*safe_parts)
+
+
 def create_test_scorecard_pdf(output_path: Path) -> None:
     """Create a minimal DSP scorecard PDF for testing.
 
@@ -94,7 +106,7 @@ def create_test_scorecard_pdf(output_path: Path) -> None:
 
     # Build PDF
     doc.build(elements)
-    print(f"[OK] Test scorecard PDF created at: {output_path}")
+    _print_status("[OK] Test scorecard PDF created at:", output_path)
 
 
 def main():
