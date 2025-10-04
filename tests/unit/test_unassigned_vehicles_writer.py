@@ -41,8 +41,8 @@ class TestUnassignedVehiclesWriter:
         assert worksheet.cell(row=2, column=1).value == "BW10"  # Van ID
         assert worksheet.cell(row=2, column=2).value == "Large"  # Vehicle Type
         assert worksheet.cell(row=2, column=3).value == "Y"  # Operational Status
-        assert worksheet.cell(row=2, column=6).value == "1HGCM82633A004352"  # VIN
-        assert worksheet.cell(row=2, column=7).value == "GT001"  # GeoTab Code
+        assert worksheet.cell(row=2, column=6).value == "1HGCM82633A004360"  # VIN (from fixture)
+        assert worksheet.cell(row=2, column=7).value == "GT010"  # GeoTab Code (from fixture)
         assert worksheet.cell(row=2, column=8).value == "Branded"  # Branded or Rental
 
         # Check date/time formatting
@@ -71,8 +71,8 @@ class TestUnassignedVehiclesWriter:
         # Check first header cell formatting
         header_cell = worksheet.cell(row=1, column=1)
         assert header_cell.font.bold
-        assert header_cell.font.color == "FFFFFF"
-        assert header_cell.fill.start_color.rgb == "FF002060"  # Dark blue
+        assert header_cell.font.color.rgb[-6:] == "FFFFFF"  # Check RGB part (ignore alpha)
+        assert header_cell.fill.start_color.rgb[-6:] == "002060"  # Dark blue (ignore alpha)
         assert header_cell.alignment.horizontal == "center"
 
     def test_calculate_days_since_assignment(self, unassigned_writer):
@@ -103,12 +103,12 @@ class TestUnassignedVehiclesWriter:
         """Test unassigned vehicles summary creation."""
         summary = unassigned_writer.create_unassigned_summary(sample_unassigned_vehicles_df)
 
-        assert summary["total_unassigned"] == 3
-        assert summary["operational_unassigned"] == 2
-        assert summary["non_operational_unassigned"] == 1
-        assert summary["by_type"]["Large"] == 1
-        assert summary["by_type"]["Extra Large"] == 1
-        assert summary["by_type"]["Step Van"] == 1
+        assert summary["total_unassigned"] == 5  # 5 vehicles in fixture
+        assert summary["operational_unassigned"] == 3  # 3 with "Y"
+        assert summary["non_operational_unassigned"] == 2  # 2 with "N"
+        assert summary["by_type"]["Large"] == 2  # BW10, BW13
+        assert summary["by_type"]["Extra Large"] == 2  # BW11, BW14
+        assert summary["by_type"]["Step Van"] == 1  # BW12
 
     def test_format_unassigned_sheet(self, unassigned_writer):
         """Test sheet formatting."""
@@ -149,7 +149,7 @@ class TestUnassignedVehiclesWriter:
         )
 
         # Check even rows have gray background
-        assert worksheet.cell(row=2, column=1).fill.start_color.rgb == "FFF2F2F2"
+        assert worksheet.cell(row=2, column=1).fill.start_color.rgb[-6:] == "F2F2F2"  # Ignore alpha
         # Check odd rows have no fill (or white)
         assert (
             worksheet.cell(row=3, column=1).fill.start_color.rgb is None
@@ -175,12 +175,12 @@ class TestUnassignedVehiclesWriter:
 
         # Read and verify CSV
         df = pd.read_csv(output_path)
-        assert len(df) == 3
+        assert len(df) == 5  # 5 vehicles in fixture
         assert "Van ID" in df.columns
         assert "VIN" in df.columns
         assert "GeoTab Code" in df.columns
         assert df.iloc[0]["Van ID"] == "BW10"
-        assert df.iloc[0]["VIN"] == "1HGCM82633A004352"
+        assert df.iloc[0]["VIN"] == "1HGCM82633A004360"  # From fixture
 
     def test_empty_unassigned_vehicles(self, unassigned_writer, vehicle_log_dict):
         """Test handling empty unassigned vehicles."""
@@ -387,18 +387,18 @@ class TestUnassignedVehiclesWriter:
 
             # Check font formatting
             assert cell.font.bold is True
-            assert cell.font.color.rgb == "FFFFFF"  # White text
+            assert cell.font.color.rgb[-6:] == "FFFFFF"  # White text (ignore alpha)
             assert cell.font.name == "Calibri"
             assert cell.font.size == 11
 
             # Check fill formatting
-            assert cell.fill.start_color.rgb == "FF002060"  # Dark blue background
+            assert cell.fill.start_color.rgb[-6:] == "002060"  # Dark blue background (ignore alpha)
             assert cell.fill.fill_type == "solid"
 
             # Check alignment
             assert cell.alignment.horizontal == "center"
             assert cell.alignment.vertical == "center"
-            assert cell.alignment.wrap_text is True
+            assert cell.alignment.wrap_text is True  # noqa: E712
 
             # Check border
             assert cell.border.left.style == "thin"
@@ -437,7 +437,7 @@ class TestUnassignedVehiclesWriter:
         if unassigned_writer.enable_alternating_rows:
             # Even rows should have gray background
             even_row_cell = worksheet.cell(row=2, column=1)
-            assert even_row_cell.fill.start_color.rgb == "FFF2F2F2"
+            assert even_row_cell.fill.start_color.rgb[-6:] == "F2F2F2"  # Ignore alpha
 
             # Odd rows should have no special fill
             odd_row_cell = worksheet.cell(row=3, column=1)
@@ -579,8 +579,8 @@ class TestUnassignedVehiclesWriter:
 
         # Check totals
         assert summary["total_unassigned"] == 7
-        assert summary["operational_unassigned"] == 3  # BW1, BW2, BW3, BW5
-        assert summary["non_operational_unassigned"] == 4  # BW4, BW6, BW7
+        assert summary["operational_unassigned"] == 4  # BW1, BW2, BW3, BW5
+        assert summary["non_operational_unassigned"] == 3  # BW4, BW6, BW7
 
         # Check by type
         assert summary["by_type"]["Large"] == 3
@@ -669,10 +669,10 @@ class TestUnassignedVehiclesWriter:
         df = pd.read_csv(output_path)
         assert len(df) == len(sample_unassigned_vehicles_df)
 
-        # VIN, GeoTab Code, Branded or Rental should be empty
-        assert all(pd.isna(df["VIN"]) or df["VIN"] == "")
-        assert all(pd.isna(df["GeoTab Code"]) or df["GeoTab Code"] == "")
-        assert all(pd.isna(df["Branded or Rental"]) or df["Branded or Rental"] == "")
+        # VIN, GeoTab Code, Branded or Rental should be empty or NaN
+        assert all(pd.isna(val) or val == "" for val in df["VIN"])
+        assert all(pd.isna(val) or val == "" for val in df["GeoTab Code"])
+        assert all(pd.isna(val) or val == "" for val in df["Branded or Rental"])
 
     # ==================== Error Handling Tests ====================
 
@@ -723,25 +723,18 @@ class TestUnassignedVehiclesWriter:
         test_dates = [
             date(2025, 1, 1),  # New Year
             date(2025, 12, 31),  # End of year
-            date(2025, 2, 29),  # Leap year (if applicable)
+            date(2024, 2, 29),  # Leap year (2024 is a leap year)
             date(2025, 10, 10),  # Double digits
         ]
 
         for test_date in test_dates:
-            try:
-                worksheet = unassigned_writer.create_unassigned_sheet(
-                    workbook=workbook,
-                    unassigned_vehicles=sample_unassigned_vehicles_df,
-                    vehicle_log_dict=vehicle_log_dict,
-                    allocation_date=test_date,
-                )
+            worksheet = unassigned_writer.create_unassigned_sheet(
+                workbook=workbook,
+                unassigned_vehicles=sample_unassigned_vehicles_df,
+                vehicle_log_dict=vehicle_log_dict,
+                allocation_date=test_date,
+            )
 
-                expected_name = test_date.strftime("%m-%d-%y") + " Available & Unassigned"
-                assert worksheet.title == expected_name
-                assert expected_name in workbook.sheetnames
-            except ValueError as e:
-                # February 29 might not exist in non-leap years
-                if test_date.month == 2 and test_date.day == 29:
-                    continue  # Skip invalid leap year date
-                else:
-                    raise e
+            expected_name = test_date.strftime("%m-%d-%y") + " Available & Unassigned"
+            assert worksheet.title == expected_name
+            assert expected_name in workbook.sheetnames

@@ -195,12 +195,21 @@ class UnassignedVehiclesWriter(BaseService):
                 else 0
             )
 
-            # Write row data
+            # Write row data - handle NaN values from pandas
+            vehicle_type = vehicle.get("Type", "Unknown")
+            vehicle_type = "Unknown" if pd.isna(vehicle_type) else vehicle_type
+
+            opnal_status = vehicle.get("Opnal? Y/N", "N")
+            opnal_status = "N" if pd.isna(opnal_status) else opnal_status
+
+            location = vehicle.get("Location", "")
+            location = "" if pd.isna(location) else location
+
             row_data = [
                 van_id,  # Van ID
-                vehicle.get("Type", "Unknown"),  # Vehicle Type
-                vehicle.get("Opnal? Y/N", "N"),  # Operational Status
-                vehicle.get("Location", ""),  # Last Known Location
+                vehicle_type,  # Vehicle Type
+                opnal_status,  # Operational Status
+                location,  # Last Known Location
                 days_since_assignment,  # Days Since Last Assignment
                 vehicle_details.get("vin", ""),  # VIN
                 vehicle_details.get("geotab", ""),  # GeoTab Code
@@ -234,6 +243,9 @@ class UnassignedVehiclesWriter(BaseService):
         max_row = worksheet.max_row
         max_col = len(self.COLUMNS)
 
+        # Always freeze top row (even if no data)
+        worksheet.freeze_panes = "A2"
+
         if max_row < 2:
             return  # No data to format
 
@@ -241,9 +253,6 @@ class UnassignedVehiclesWriter(BaseService):
         data_range = f"A1:{get_column_letter(max_col)}{max_row}"
         worksheet.auto_filter.ref = data_range
         logger.debug(f"Applied AutoFilter to range: {data_range}")
-
-        # Freeze top row
-        worksheet.freeze_panes = "A2"
 
         # Set print settings
         worksheet.page_setup.orientation = "landscape"

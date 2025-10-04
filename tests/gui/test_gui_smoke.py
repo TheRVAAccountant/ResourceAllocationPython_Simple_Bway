@@ -1,9 +1,11 @@
 """Basic GUI smoke tests to catch critical regressions."""
 
+import importlib
 import sys
 import tkinter as tk
+from contextlib import ExitStack
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -13,23 +15,30 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 @pytest.fixture
 def mock_services():
-    """Mock all backend services to avoid dependencies."""
-    with patch("src.gui.main_window.AllocationEngine"), patch(
-        "src.gui.main_window.ExcelService"
-    ), patch("src.gui.main_window.BorderFormattingService"), patch(
-        "src.gui.main_window.DashboardDataService"
-    ), patch(
-        "src.gui.main_window.DataManagementService"
-    ), patch(
-        "src.gui.main_window.AssociateService"
-    ), patch(
-        "src.gui.main_window.ScorecardService"
-    ):
+    """Mock available backend services to avoid dependencies."""
+    module = importlib.import_module("src.gui.main_window")
+    service_names = [
+        "AllocationEngine",
+        "ExcelService",
+        "BorderFormattingService",
+        "DashboardDataService",
+        "DataManagementService",
+        "AssociateService",
+        "ScorecardService",
+    ]
+
+    with ExitStack() as stack:
+        for name in service_names:
+            if hasattr(module, name):
+                stack.enter_context(patch(f"src.gui.main_window.{name}"))
+
+        stack.enter_context(patch("src.gui.main_window.messagebox.askokcancel", return_value=True))
+        stack.enter_context(patch("src.gui.main_window.sys.exit"))
         yield
 
 
 @pytest.mark.gui
-def test_main_window_initializes(mock_services):
+def test_main_window_initializes(mock_services):  # noqa: ARG001
     """Test that main window can be created without errors."""
     try:
         from src.gui.main_window import ResourceAllocationGUI
@@ -53,7 +62,7 @@ def test_main_window_initializes(mock_services):
 
 
 @pytest.mark.gui
-def test_all_tabs_exist(mock_services):
+def test_all_tabs_exist(mock_services):  # noqa: ARG001
     """Test that all expected tabs are created."""
     from src.gui.main_window import ResourceAllocationGUI
 
@@ -66,15 +75,18 @@ def test_all_tabs_exist(mock_services):
         # Check that key tabs exist
         assert hasattr(app, "dashboard_tab")
         assert hasattr(app, "allocation_tab")
-        assert hasattr(app, "data_mgmt_tab")
+        assert hasattr(app, "data_management_tab")
         assert hasattr(app, "settings_tab")
+
+        if hasattr(app, "data_mgmt_tab"):
+            assert app.data_mgmt_tab is app.data_management_tab
 
     finally:
         app.destroy()
 
 
 @pytest.mark.gui
-def test_services_initialized(mock_services):
+def test_services_initialized(mock_services):  # noqa: ARG001
     """Test that all services are initialized."""
     from src.gui.main_window import ResourceAllocationGUI
 
@@ -107,7 +119,7 @@ def test_icon_loading_does_not_crash():
 
 
 @pytest.mark.gui
-def test_window_closes_cleanly(mock_services):
+def test_window_closes_cleanly(mock_services):  # noqa: ARG001
     """Test that window closes without errors."""
     from src.gui.main_window import ResourceAllocationGUI
 
