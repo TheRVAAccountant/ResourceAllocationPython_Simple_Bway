@@ -36,6 +36,11 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-cov pytest-mock pytest-asyncio ruff mypy
 
+    - name: Setup test fixtures
+      run: |
+        python scripts/create_test_scorecard.py
+      shell: bash
+
     - name: Run linting with ruff
       run: |
         ruff check src/ tests/ --output-format=github

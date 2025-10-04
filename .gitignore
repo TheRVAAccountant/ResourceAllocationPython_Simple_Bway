@@ -42,9 +42,10 @@ src/logs/
 outputs/**
 inputs/**
 
-# Keep placeholders if needed (uncomment if you add README)
-# !outputs/README.md
-# !inputs/README.md
+# Keep placeholders and test fixtures
+!inputs/README.md
+!inputs/test_fixtures/
+!inputs/test_fixtures/**
 
 ### Local config/state
 config/*.json
