@@ -1,9 +1,10 @@
 """Tests for ScorecardService parsing logic."""
-
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+
+import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SCORECARD_PATH = PROJECT_ROOT / "inputs" / "US_BWAY_DVA2_Week37_2025_en_DSPScorecard.pdf"
@@ -15,10 +16,14 @@ for module_name in list(sys.modules.keys()):
     if module_name == "src" or module_name.startswith("src."):
         del sys.modules[module_name]
 
-from src.services.scorecard_service import ScorecardService
+from src.services.scorecard_service import ScorecardService  # noqa: E402
 
 
 def test_scorecard_service_parses_metadata_and_rows():
+    # Skip test if PDF file doesn't exist (as in CI environment)
+    if not SCORECARD_PATH.exists():
+        pytest.skip(f"Scorecard PDF not found at {SCORECARD_PATH}")
+
     settings = {"scorecard_pdf_path": str(SCORECARD_PATH)}
     service = ScorecardService(settings=settings)
 
