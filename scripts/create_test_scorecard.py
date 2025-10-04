@@ -94,7 +94,7 @@ def create_test_scorecard_pdf(output_path: Path) -> None:
 
     # Build PDF
     doc.build(elements)
-    print(f"✅ Test scorecard PDF created at: {output_path}")
+    print(f"[OK] Test scorecard PDF created at: {output_path}")
 
 
 def main():
