@@ -16,6 +16,16 @@ import pandas as pd  # noqa: E402
 import pytest  # noqa: E402
 from openpyxl import Workbook  # noqa: E402
 
+# Ensure tkinter exposes messagebox so GUI tests can patch it reliably.
+try:  # pragma: no cover - exercised implicitly during test setup
+    import tkinter as tk  # noqa: E402
+    from tkinter import messagebox as _messagebox  # noqa: E402
+
+    if not hasattr(tk, "messagebox"):
+        tk.messagebox = _messagebox
+except Exception:  # pragma: no cover - headless environments without tkinter
+    tk = None  # type: ignore
+
 from src.core.gas_compatible_allocator import GASCompatibleAllocator  # noqa: E402
 from src.services.daily_details_thick_borders import DailyDetailsThickBorderService  # noqa: E402
 from src.services.daily_details_writer import DailyDetailsWriter  # noqa: E402

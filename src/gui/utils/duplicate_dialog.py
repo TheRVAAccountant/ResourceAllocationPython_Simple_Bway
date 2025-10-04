@@ -1,10 +1,39 @@
 """Duplicate validation dialog utilities for GUI integration."""
 
-from tkinter import messagebox
+import tkinter as tk
 
 from loguru import logger
 
 from src.services.duplicate_validator import ValidationResult
+
+# Ensure ``tkinter.messagebox`` exists even in headless environments so pytest patches work.
+try:  # pragma: no cover - defensive in case tkinter behaves differently
+    from tkinter import messagebox as _messagebox
+except ImportError:  # pragma: no cover - tkinter missing would already break GUI usage
+    _messagebox = None
+
+if _messagebox is not None and not hasattr(tk, "messagebox"):
+    tk.messagebox = _messagebox
+
+
+def _get_messagebox():
+    """Return the active tkinter messagebox module (patched or real)."""
+    if hasattr(tk, "messagebox"):
+        return tk.messagebox
+    return _messagebox
+
+
+def _normalize_assignments(duplicate) -> list:
+    """Safely extract assignment objects from a duplicate entry."""
+    raw_assignments = getattr(duplicate, "assignments", []) or []
+
+    if isinstance(raw_assignments, dict):
+        raw_assignments = raw_assignments.values()
+
+    try:
+        return list(raw_assignments)
+    except Exception:  # pragma: no cover - defensive against mocks in tests
+        return []
 
 
 def show_duplicate_warning(validation_result: ValidationResult) -> bool:
@@ -21,17 +50,31 @@ def show_duplicate_warning(validation_result: ValidationResult) -> bool:
         if not validation_result or not validation_result.has_duplicates():
             return True
 
-        # Build warning message
-        message = f"⚠️ Found {validation_result.duplicate_count} vehicles assigned to multiple routes:\n\n"
+        duplicates = validation_result.duplicates or {}
+        messagebox = _get_messagebox()
 
-        for vehicle_id, duplicate in validation_result.duplicates.items():
-            routes = [a.route_code for a in duplicate.assignments]
-            drivers = [a.driver_name for a in duplicate.assignments]
-            message += f"• Vehicle {vehicle_id}: Routes {', '.join(routes)} (Drivers: {', '.join(drivers)})\n"
+        # Build warning message
+        message = (
+            f"⚠️ Found {validation_result.duplicate_count} vehicles assigned "
+            f"to multiple routes:\n\n"
+        )
+
+        for vehicle_id, duplicate in duplicates.items():
+            assignments = _normalize_assignments(duplicate)
+            routes = [getattr(a, "route_code", "Unknown") for a in assignments]
+            drivers = [getattr(a, "driver_name", "Unknown") for a in assignments]
+            message += (
+                f"• Vehicle {vehicle_id}: Routes {', '.join(routes)} "
+                f"(Drivers: {', '.join(drivers)})\n"
+            )
 
         message += "\n❓ Do you want to proceed with the allocation anyway?\n"
         message += "\n✅ Click 'Yes' to continue and mark duplicates in results"
         message += "\n❌ Click 'No' to cancel and review assignments"
+
+        if messagebox is None:
+            logger.warning("tkinter.messagebox unavailable; defaulting to proceed=False")
+            return False
 
         # Show dialog
         return messagebox.askyesno(
@@ -54,31 +97,48 @@ def show_duplicate_details(validation_result: ValidationResult) -> None:
         if not validation_result or not validation_result.has_duplicates():
             return
 
+        duplicates = validation_result.duplicates or {}
+        messagebox = _get_messagebox()
+
         # Build detailed message
         message = "Duplicate Vehicle Assignment Details\n"
         message += "=" * 40 + "\n\n"
 
-        for vehicle_id, duplicate in validation_result.duplicates.items():
+        for vehicle_id, duplicate in duplicates.items():
+            conflict_level = getattr(duplicate, "conflict_level", "warning") or "warning"
+            assignments = _normalize_assignments(duplicate)
+
             message += f"Vehicle: {vehicle_id}\n"
-            message += f"Conflict Level: {duplicate.conflict_level.upper()}\n"
-            message += f"Number of Assignments: {len(duplicate.assignments)}\n\n"
+            message += f"Conflict Level: {str(conflict_level).upper()}\n"
+            message += f"Number of Assignments: {len(assignments)}\n\n"
 
             message += "Assignments:\n"
-            for i, assignment in enumerate(duplicate.assignments, 1):
-                message += f"  {i}. Route: {assignment.route_code}\n"
-                message += f"     Driver: {assignment.driver_name}\n"
-                message += f"     Service: {assignment.service_type}\n"
-                message += f"     Wave: {assignment.wave}\n"
-                message += f"     Location: {assignment.staging_location}\n"
-                message += f"     Time: {assignment.assignment_timestamp.strftime('%H:%M:%S')}\n\n"
+            for i, assignment in enumerate(assignments, 1):
+                message += f"  {i}. Route: {getattr(assignment, 'route_code', 'Unknown')}\n"
+                message += f"     Driver: {getattr(assignment, 'driver_name', 'Unknown')}\n"
+                message += f"     Service: {getattr(assignment, 'service_type', 'Unknown')}\n"
+                message += f"     Wave: {getattr(assignment, 'wave', 'Unknown')}\n"
+                message += f"     Location: {getattr(assignment, 'staging_location', 'Unknown')}\n"
 
-            if duplicate.resolution_suggestion:
-                message += f"Suggested Resolution:\n{duplicate.resolution_suggestion}\n"
+                timestamp = getattr(assignment, "assignment_timestamp", None)
+                if timestamp is not None and hasattr(timestamp, "strftime"):
+                    formatted_time = timestamp.strftime("%H:%M:%S")
+                else:
+                    formatted_time = "Unknown"
+                message += f"     Time: {formatted_time}\n\n"
+
+            resolution = getattr(duplicate, "resolution_suggestion", None)
+            if resolution:
+                message += f"Suggested Resolution:\n{resolution}\n"
 
             message += "-" * 40 + "\n\n"
 
+        if messagebox is None:
+            logger.warning("tkinter.messagebox unavailable; skipping duplicate details dialog")
+            return
+
         # Show info dialog
-        messagebox.showinfo(title="Duplicate Assignment Details", message=message)
+        messagebox.showinfo(title="Duplicate Details", message=message)
 
     except Exception as e:
         logger.error(f"Error showing duplicate details dialog: {e}")
@@ -95,6 +155,12 @@ def show_no_duplicates(_validation_result: ValidationResult) -> None:
         message = "✅ Validation Complete!\n\n"
         message += "No duplicate vehicle assignments detected.\n"
         message += "All vehicles are assigned to unique routes."
+
+        messagebox = _get_messagebox()
+
+        if messagebox is None:
+            logger.warning("tkinter.messagebox unavailable; skipping no-duplicates dialog")
+            return
 
         messagebox.showinfo(title="Validation Complete - No Duplicates", message=message)
 
@@ -115,10 +181,13 @@ def format_duplicate_summary(validation_result: ValidationResult) -> str:
     if not validation_result.has_duplicates():
         return "✅ No duplicate assignments detected"
 
+    duplicates = validation_result.duplicates or {}
+
     summary = f"⚠️ {validation_result.duplicate_count} duplicate assignment(s) found:\n"
 
-    for vehicle_id, duplicate in validation_result.duplicates.items():
-        routes = [a.route_code for a in duplicate.assignments]
+    for vehicle_id, duplicate in duplicates.items():
+        assignments = _normalize_assignments(duplicate)
+        routes = [getattr(a, "route_code", "Unknown") for a in assignments]
         summary += f"• {vehicle_id}: {', '.join(routes)}\n"
 
     return summary

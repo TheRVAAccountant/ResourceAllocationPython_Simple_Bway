@@ -44,6 +44,7 @@ class GASCompatibleAllocator:
         self.allocation_results = []
         self.assigned_van_ids = []
         self.unassigned_vehicles = []
+        self.unassigned_route_codes: list[str] = []
 
         # Initialize validators and writers
         self.duplicate_validator = DuplicateVehicleValidator()
@@ -167,33 +168,37 @@ class GASCompatibleAllocator:
 
         try:
             df = pd.read_excel(file_path, sheet_name=sheet_name)
-
-            # Verify required columns
-            required_cols = ["Van ID", "Type", "Opnal? Y/N"]
-            missing_cols = [col for col in required_cols if col not in df.columns]
-
-            if missing_cols:
-                # Try alternative names
-                if "Vehicle ID" in df.columns and "Van ID" not in df.columns:
-                    df.rename(columns={"Vehicle ID": "Van ID"}, inplace=True)
-                if "Vehicle Type" in df.columns and "Type" not in df.columns:
-                    df.rename(columns={"Vehicle Type": "Type"}, inplace=True)
-                if "Operational" in df.columns and "Opnal? Y/N" not in df.columns:
-                    df.rename(columns={"Operational": "Opnal? Y/N"}, inplace=True)
-
-                # Check again
-                missing_cols = [col for col in required_cols if col not in df.columns]
-                if missing_cols:
-                    raise ValueError(f"Missing required columns in Vehicle Status: {missing_cols}")
-
-            self.vehicle_status_data = df
-            logger.info(f"Loaded {len(df)} vehicles from Vehicle Status")
-
-            return df
-
-        except Exception as e:
+        except ValueError as exc:
+            logger.warning(
+                f"Sheet '{sheet_name}' not found in {file_path}: {exc}. Falling back to first sheet"
+            )
+            df = pd.read_excel(file_path, sheet_name=0)
+        except Exception as e:  # pragma: no cover - unexpected read errors
             logger.error(f"Failed to load Vehicle Status: {e}")
             raise
+
+        # Verify required columns
+        required_cols = ["Van ID", "Type", "Opnal? Y/N"]
+        missing_cols = [col for col in required_cols if col not in df.columns]
+
+        if missing_cols:
+            # Try alternative names
+            if "Vehicle ID" in df.columns and "Van ID" not in df.columns:
+                df.rename(columns={"Vehicle ID": "Van ID"}, inplace=True)
+            if "Vehicle Type" in df.columns and "Type" not in df.columns:
+                df.rename(columns={"Vehicle Type": "Type"}, inplace=True)
+            if "Operational" in df.columns and "Opnal? Y/N" not in df.columns:
+                df.rename(columns={"Operational": "Opnal? Y/N"}, inplace=True)
+
+            # Check again
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            if missing_cols:
+                raise ValueError(f"Missing required columns in Vehicle Status: {missing_cols}")
+
+        self.vehicle_status_data = df
+        logger.info(f"Loaded {len(df)} vehicles from Vehicle Status")
+
+        return df
 
     def load_vehicle_log(self, file_path: str, sheet_name: str = "Vehicle Log") -> pd.DataFrame:
         """Load Vehicle Log from Daily Summary file.
@@ -247,7 +252,8 @@ class GASCompatibleAllocator:
             # If brand column wasn't mapped, attempt to derive from obvious alternatives
             if "Branded or Rental" not in df.columns and brand_column_source is None:
                 logger.warning(
-                    "Vehicle Log is missing a Branded/Rental (Van Type) column; brand prioritization will be limited."
+                    "Vehicle Log is missing a Branded/Rental (Van Type) column; "
+                    "brand prioritization will be limited."
                 )
 
             # Verify we have the required columns after mapping
@@ -430,13 +436,13 @@ class GASCompatibleAllocator:
             tier = "branded" if brand_label == "branded" else "rental"
             vehicle_groups[van_type][tier].append(record)
 
-        logger.info(
-            f"Vehicle groups (branded priority): {[(k, _group_total(v), len(v['branded'])) for k, v in vehicle_groups.items()]}"
-        )
+        group_summary = [(k, _group_total(v), len(v["branded"])) for k, v in vehicle_groups.items()]
+        logger.info(f"Vehicle groups (branded priority): {group_summary}")
 
         # Step 4: Allocate vehicles to routes
         allocation_results = []
         assigned_van_ids = []
+        self.unassigned_route_codes = []
 
         logger.info(f"Starting allocation for {len(bway_routes)} routes")
 
@@ -452,7 +458,9 @@ class GASCompatibleAllocator:
 
             group = vehicle_groups[required_van_type]
             if _group_total(group) == 0:
-                logger.debug(f"No available '{required_van_type}' for route {route['Route Code']}")
+                route_code = str(route["Route Code"])
+                logger.debug(f"No available '{required_van_type}' for route {route_code}")
+                self.unassigned_route_codes.append(route_code)
                 continue
 
             # Assign first available vehicle of correct type prioritizing branded assets
@@ -552,18 +560,46 @@ class GASCompatibleAllocator:
         if self.vehicle_status_data is None:
             raise ValueError("Vehicle Status data not loaded")
 
-        # Get operational vehicles
-        operational = self.vehicle_status_data[
-            self.vehicle_status_data["Opnal? Y/N"].astype(str).str.upper() == "Y"
-        ]
+        status_series = self.vehicle_status_data["Opnal? Y/N"].astype(str).str.upper()
+
+        # Separate operational and non-operational vehicles
+        operational = self.vehicle_status_data[status_series == "Y"].copy()
+        non_operational = self.vehicle_status_data[status_series != "Y"].copy()
 
         # Filter out assigned vehicles
-        unassigned = operational[~operational["Van ID"].isin(self.assigned_van_ids)]
+        unassigned_operational = operational[~operational["Van ID"].isin(self.assigned_van_ids)]
+        unassigned_non_operational = non_operational[
+            ~non_operational["Van ID"].isin(self.assigned_van_ids)
+        ]
 
-        logger.info(f"Found {len(unassigned)} unassigned operational vehicles")
-        self.unassigned_vehicles = unassigned
+        # Combine and deduplicate (retain original column order)
+        unassigned = pd.concat(
+            [unassigned_operational, unassigned_non_operational], ignore_index=True
+        ).drop_duplicates(subset="Van ID", keep="first")
 
-        return unassigned
+        # Focus on vehicles needing follow-up: non-operational OR specialised Step vans
+        type_series = unassigned.get("Type", pd.Series(dtype=str)).astype(str).str.lower()
+        status_flags = unassigned.get("Opnal? Y/N", pd.Series(dtype=str)).astype(str).str.upper()
+        step_mask = type_series.str.contains("step")
+        non_operational_mask = status_flags != "Y"
+        follow_up_mask = step_mask | non_operational_mask
+        filtered_unassigned = unassigned[follow_up_mask].reset_index(drop=True)
+
+        followup_status = (
+            filtered_unassigned.get("Opnal? Y/N", pd.Series(dtype=str)).astype(str).str.upper()
+        )
+        operational_followups = int((followup_status == "Y").sum())
+        non_operational_followups = len(filtered_unassigned) - operational_followups
+
+        logger.info(
+            "Found %s unassigned vehicles (%s operational, %s non-operational)",
+            len(filtered_unassigned),
+            operational_followups,
+            non_operational_followups,
+        )
+        self.unassigned_vehicles = filtered_unassigned
+
+        return filtered_unassigned
 
     def create_allocation_result(self) -> AllocationResult:
         """Create an AllocationResult object compatible with the Python system.
@@ -575,21 +611,27 @@ class GASCompatibleAllocator:
         driver_vehicles = defaultdict(list)
         for result in self.allocation_results:
             driver_name = result.get("Associate Name", "N/A")
-            van_id = result["Van ID"]
-            driver_vehicles[driver_name].append(van_id)
+            van_id = result.get("Van ID")
+            if van_id:
+                driver_vehicles[driver_name].append(str(van_id))
 
-        # Get unallocated vehicle IDs
+        # Get allocated/unallocated vehicle IDs
+        allocated_vehicle_ids = sorted(set(self.assigned_van_ids))
+
         if (
             isinstance(self.unassigned_vehicles, pd.DataFrame)
             and not self.unassigned_vehicles.empty
         ):
-            unallocated_ids = list(self.unassigned_vehicles["Van ID"])
+            unallocated_ids = [str(v).strip() for v in self.unassigned_vehicles["Van ID"]]
         else:
             unallocated_ids = []
 
+        if not unallocated_ids and self.unassigned_route_codes:
+            unallocated_ids = [f"UNASSIGNED_ROUTE:{code}" for code in self.unassigned_route_codes]
+
         # Check for duplicate warnings in results
-        warnings = []
-        errors = []
+        warnings: list[str] = []
+        errors: list[str] = []
         duplicate_count = 0
 
         for result in self.allocation_results:
@@ -620,16 +662,38 @@ class GASCompatibleAllocator:
         if total_driver_count == 0:
             total_driver_count = len(driver_vehicles)
         active_driver_count = len([v for v in driver_vehicles.values() if v])
+
+        # Determine total BWAY routes considered
+        total_routes_requested = 0
+        if self.day_of_ops_data is not None and not self.day_of_ops_data.empty:
+            try:
+                dsp_series = self.day_of_ops_data["DSP"].astype(str).str.upper()
+                total_routes_requested = int((dsp_series == "BWAY").sum())
+            except Exception:
+                total_routes_requested = len(self.day_of_ops_data)
+        if total_routes_requested == 0 and self.daily_routes_data is not None:
+            total_routes_requested = len(self.daily_routes_data)
+        if total_routes_requested == 0:
+            total_routes_requested = len(self.allocation_results)
+
+        total_assigned = len(allocated_vehicle_ids)
+        total_unassigned_routes = max(total_routes_requested - total_assigned, 0)
         allocation_rate = (
-            (len(self.assigned_van_ids) / len(self.allocation_results) * 100)
-            if self.allocation_results
-            else 0.0
+            (total_assigned / total_routes_requested * 100) if total_routes_requested else 0.0
         )
+
+        unassigned_details = []
+        if (
+            isinstance(self.unassigned_vehicles, pd.DataFrame)
+            and not self.unassigned_vehicles.empty
+        ):
+            unassigned_details = self.unassigned_vehicles.to_dict("records")
 
         # Create AllocationResult
         allocation_result = AllocationResult(
             request_id=f"GAS_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
             allocations=dict(driver_vehicles),
+            allocated_vehicles=allocated_vehicle_ids,
             unallocated_vehicles=unallocated_ids,
             status=AllocationStatus.COMPLETED,
             timestamp=datetime.now(),
@@ -637,13 +701,20 @@ class GASCompatibleAllocator:
             errors=errors,
             metadata={
                 "source": "GAS_Compatible",
-                "total_routes": len(self.allocation_results),
-                "total_assigned": len(self.assigned_van_ids),
+                "total_routes": int(total_routes_requested),
+                "total_assigned": total_assigned,
                 "total_unassigned": len(unallocated_ids),
+                "unassigned_route_count": int(total_unassigned_routes),
                 "duplicate_count": duplicate_count,
                 "total_drivers": int(total_driver_count),
                 "active_drivers": int(active_driver_count),
                 "allocation_rate": round(allocation_rate, 2),
+                "allocated_count": total_assigned,
+                "unallocated_count": len(unallocated_ids),
+                "allocated_vehicle_ids": allocated_vehicle_ids,
+                "unallocated_vehicle_ids": unallocated_ids,
+                "unassigned_vehicle_details": unassigned_details,
+                "unassigned_route_codes": list(self.unassigned_route_codes),
                 "detailed_results": self.allocation_results,  # Store in metadata instead
             },
         )
@@ -810,14 +881,16 @@ class GASCompatibleAllocator:
                 # Log sample data for first few vehicles
                 if len(vehicle_log_dict) <= 3:
                     logger.debug(
-                        f"Vehicle {van_id}: VIN={vin_value}, GeoTab={geotab_value}, Type={brand_rental_value}"
+                        f"Vehicle {van_id}: VIN={vin_value}, "
+                        f"GeoTab={geotab_value}, Type={brand_rental_value}"
                     )
 
             # Log summary statistics
             vehicles_with_geotab = sum(1 for v in vehicle_log_dict.values() if v["geotab"])
             vehicles_with_type = sum(1 for v in vehicle_log_dict.values() if v["brand_or_rental"])
             logger.info(
-                f"Vehicle Log summary: {len(vehicle_log_dict)} total, {vehicles_with_geotab} with GeoTab, {vehicles_with_type} with Type"
+                f"Vehicle Log summary: {len(vehicle_log_dict)} total, "
+                f"{vehicles_with_geotab} with GeoTab, {vehicles_with_type} with Type"
             )
         # Fallback to Vehicle Status if no Vehicle Log
         elif self.vehicle_status_data is not None:
@@ -856,6 +929,7 @@ class GASCompatibleAllocator:
                 allocation_result=allocation_result,
                 allocation_date=allocation_date,
                 vehicle_log_dict=vehicle_log_dict,
+                skip_results_sheet=False,
             )
         else:
             # Create new file with all sheets
@@ -878,6 +952,7 @@ class GASCompatibleAllocator:
                 allocation_result=allocation_result,
                 allocation_date=allocation_date,
                 vehicle_log_dict=vehicle_log_dict,
+                skip_results_sheet=False,
             )
 
         if success:

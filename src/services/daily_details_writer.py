@@ -1,6 +1,6 @@
 """Daily Details writer service for GAS-compatible output."""
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
@@ -225,7 +225,11 @@ class DailyDetailsWriter(BaseService):
                 )
                 if unassigned_sheet_name not in workbook.sheetnames:
                     self._create_unassigned_sheet(
-                        workbook, unassigned_sheet_name, allocation_result, allocation_date
+                        workbook,
+                        unassigned_sheet_name,
+                        allocation_result,
+                        allocation_date,
+                        vehicle_log_dict,
                     )
 
             # Save the workbook
@@ -487,7 +491,8 @@ class DailyDetailsWriter(BaseService):
                     # Log if GeoTab or Type are empty
                     if not geotab_value or not brand_rental_value:
                         logger.debug(
-                            f"Vehicle {vehicle_id}: VIN={vin_value}, GeoTab={geotab_value}, Type={brand_rental_value}"
+                            f"Vehicle {vehicle_id}: VIN={vin_value}, "
+                            f"GeoTab={geotab_value}, Type={brand_rental_value}"
                         )
                 else:
                     # Use data from result if available
@@ -702,7 +707,12 @@ class DailyDetailsWriter(BaseService):
         logger.info(f"Created Results sheet '{sheet_name}' with {row_num-2} rows")
 
     def _create_unassigned_sheet(
-        self, workbook, sheet_name: str, allocation_result: AllocationResult, _allocation_date: date
+        self,
+        workbook,
+        sheet_name: str,
+        allocation_result: AllocationResult,
+        allocation_date: date,
+        vehicle_log_details: dict | None = None,
     ):
         """Create an Unassigned Vans sheet.
 
@@ -714,38 +724,79 @@ class DailyDetailsWriter(BaseService):
         """
         sheet = workbook.create_sheet(sheet_name)
 
-        # Headers for unassigned sheet (15 columns as per GAS)
+        # Headers closely matching dedicated Unassigned writer
         headers = [
             "Van ID",
-            "Year",
-            "Make",
-            "Model",
-            "Style",
-            "Type",
-            "License Tag Number",
-            "License Tag State",
-            "Ownership",
+            "Vehicle Type",
+            "Operational Status",
+            "Last Known Location",
+            "Days Since Last Assignment",
             "VIN",
-            "Van Type",
-            "Issue",
-            "Date GROUNDED",
-            "Date UNGROUNDED",
-            "Opnal? Y/N",
+            "GeoTab Code",
+            "Branded or Rental",
+            "Notes",
+            "Unassigned Date",
+            "Unassigned Time",
         ]
 
-        # Add headers
         for col_idx, header in enumerate(headers, start=1):
             cell = sheet.cell(row=1, column=col_idx, value=header)
             cell.fill = self.header_fill
             cell.font = self.header_font
             cell.border = self.header_border
             cell.alignment = self.header_alignment
+            sheet.column_dimensions[get_column_letter(col_idx)].width = 18
 
-        # Add unassigned vehicles
+        vehicle_log_dict = vehicle_log_details or {}
+
+        # Build lookup for vehicle details stored in metadata
+        unassigned_details = allocation_result.metadata.get("unassigned_vehicle_details", [])
+        details_by_van = {}
+        for detail in unassigned_details:
+            van_key = str(detail.get("Van ID", "")).strip()
+            if van_key:
+                details_by_van[van_key] = detail
+
+        timestamp = datetime.now()
+        allocation_date_str = allocation_date.strftime("%m/%d/%Y")
+
         for row_idx, vehicle_id in enumerate(allocation_result.unallocated_vehicles, start=2):
-            sheet.cell(row=row_idx, column=1, value=vehicle_id)  # Van ID
-            sheet.cell(row=row_idx, column=15, value="Y")  # Operational
+            vehicle_id_str = str(vehicle_id).strip()
+            detail = details_by_van.get(vehicle_id_str, {})
+            log_info = vehicle_log_dict.get(vehicle_id_str, {})
+
+            vehicle_type = (
+                detail.get("Type") or detail.get("Vehicle Type") or log_info.get("vehicle_type", "")
+            )
+            operational_flag = str(detail.get("Opnal? Y/N", "N")).upper()
+            operational_status = "Operational" if operational_flag == "Y" else "Not Operational"
+            location = detail.get("Location") or detail.get("Last Known Location") or ""
+            days_since_assignment = detail.get("Days Since Last Assignment") or 0
+            vin_value = log_info.get("vin", "")
+            geotab_value = log_info.get("geotab", "")
+            brand_value = log_info.get("brand_or_rental", "")
+
+            row_values = [
+                vehicle_id_str,
+                vehicle_type,
+                operational_status,
+                location,
+                days_since_assignment,
+                vin_value,
+                geotab_value,
+                brand_value,
+                "",
+                allocation_date_str,
+                timestamp.strftime("%H:%M:%S"),
+            ]
+
+            for col_idx, value in enumerate(row_values, start=1):
+                cell = sheet.cell(row=row_idx, column=col_idx, value=value)
+                cell.border = self.header_border
+                if col_idx == 5:
+                    cell.alignment = Alignment(horizontal="center")
 
         logger.info(
-            f"Created Unassigned sheet '{sheet_name}' with {len(allocation_result.unallocated_vehicles)} vehicles"
+            f"Created Unassigned sheet '{sheet_name}' with "
+            f"{len(allocation_result.unallocated_vehicles)} vehicles"
         )
