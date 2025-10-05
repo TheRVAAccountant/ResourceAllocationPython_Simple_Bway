@@ -2,9 +2,11 @@
 
 import json
 import threading
+import time
 from datetime import date, datetime
 from pathlib import Path
 from tkinter import StringVar, filedialog, messagebox
+from typing import Any
 
 import customtkinter as ctk
 from loguru import logger
@@ -16,6 +18,139 @@ from src.services.duplicate_validator import DuplicateVehicleValidator
 from src.utils.recent_files_manager import FileFieldType
 
 __all__ = ["AllocationTab", "DuplicateVehicleValidator", "show_duplicate_warning"]
+
+
+class AllocationTelemetry:
+    """Telemetry and logging system for allocation tab operations."""
+
+    def __init__(self, session_id: str | None = None):
+        """Initialize telemetry system.
+
+        Args:
+            session_id: Optional session identifier for tracking.
+        """
+        self.session_id = session_id or f"session_{int(time.time())}"
+        self.event_count = 0
+        self.operation_timings = {}
+        logger.info(f"Allocation telemetry initialized | session_id={self.session_id}")
+
+    def log_event(
+        self,
+        event_type: str,
+        action: str,
+        details: dict[str, Any] | None = None,
+        level: str = "info",
+    ):
+        """Log a telemetry event.
+
+        Args:
+            event_type: Type of event (ui_action, allocation, validation, etc.).
+            action: Specific action performed.
+            details: Additional event details.
+            level: Log level (debug, info, warning, error).
+        """
+        self.event_count += 1
+        event_data = {
+            "session_id": self.session_id,
+            "event_id": self.event_count,
+            "event_type": event_type,
+            "action": action,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        if details:
+            event_data.update(details)
+
+        log_msg = " | ".join([f"{k}={v}" for k, v in event_data.items()])
+
+        if level == "debug":
+            logger.debug(log_msg)
+        elif level == "warning":
+            logger.warning(log_msg)
+        elif level == "error":
+            logger.error(log_msg)
+        else:
+            logger.info(log_msg)
+
+    def start_operation(self, operation_name: str):
+        """Start timing an operation.
+
+        Args:
+            operation_name: Name of the operation to time.
+        """
+        self.operation_timings[operation_name] = time.time()
+        self.log_event("operation", "started", {"operation": operation_name}, "debug")
+
+    def end_operation(
+        self, operation_name: str, success: bool = True, details: dict[str, Any] | None = None
+    ):
+        """End timing an operation and log results.
+
+        Args:
+            operation_name: Name of the operation that completed.
+            success: Whether the operation succeeded.
+            details: Additional operation details.
+        """
+        if operation_name in self.operation_timings:
+            duration = time.time() - self.operation_timings[operation_name]
+            event_details = {
+                "operation": operation_name,
+                "duration_seconds": f"{duration:.3f}",
+                "status": "success" if success else "failure",
+            }
+            if details:
+                event_details.update(details)
+
+            level = "info" if success else "error"
+            self.log_event("operation", "completed", event_details, level)
+            del self.operation_timings[operation_name]
+
+    def log_user_action(self, action: str, component: str, details: dict[str, Any] | None = None):
+        """Log a user interface action.
+
+        Args:
+            action: Action performed (click, select, input, etc.).
+            component: UI component affected.
+            details: Additional action details.
+        """
+        event_details = {"component": component}
+        if details:
+            event_details.update(details)
+        self.log_event("ui_action", action, event_details)
+
+    def log_allocation_event(self, action: str, details: dict[str, Any] | None = None):
+        """Log an allocation-specific event.
+
+        Args:
+            action: Allocation action performed.
+            details: Allocation details.
+        """
+        self.log_event("allocation", action, details)
+
+    def log_validation_event(
+        self, action: str, details: dict[str, Any] | None = None, level: str = "info"
+    ):
+        """Log a validation event.
+
+        Args:
+            action: Validation action performed.
+            details: Validation details.
+            level: Log level for the event.
+        """
+        self.log_event("validation", action, details, level)
+
+    def log_error(self, error_type: str, message: str, details: dict[str, Any] | None = None):
+        """Log an error event.
+
+        Args:
+            error_type: Type of error.
+            message: Error message.
+            details: Additional error details.
+        """
+        event_details = {"error_type": error_type, "message": message}
+        if details:
+            event_details.update(details)
+        self.log_event("error", "occurred", event_details, "error")
 
 
 class _FallbackStringVar:
@@ -89,6 +224,10 @@ class AllocationTab:
         self.excel_service = excel_service
         self.border_service = border_service
 
+        # Initialize telemetry system
+        self.telemetry = AllocationTelemetry()
+        self.telemetry.log_event("lifecycle", "tab_initialized")
+
         # File paths for GAS-compatible allocation
         self.day_of_ops_path = _make_stringvar(self.parent)
         self.daily_routes_path = _make_stringvar(self.parent)
@@ -104,7 +243,15 @@ class AllocationTab:
         try:
             self.parent.grid_columnconfigure(0, weight=1)
             self.parent.grid_columnconfigure(1, weight=1)
-            self.parent.grid_rowconfigure(2, weight=1)
+            # Row 0: Header (no weight)
+            # Row 1: File selection (no weight)
+            # Row 2: Scrollable config section (weight=1 for expansion)
+            # Row 3: Results section (weight=1 for expansion)
+            # Row 4: Action buttons (no weight)
+            self.parent.grid_rowconfigure(
+                2, weight=0
+            )  # Config section - fixed height with scrolling
+            self.parent.grid_rowconfigure(3, weight=1)  # Results section - expandable
         except Exception as exc:  # pragma: no cover - mocked parent widgets
             logger.debug(f"Skipping grid configuration due to mock parent: {exc}")
 
@@ -127,7 +274,15 @@ class AllocationTab:
         # File Selection Section
         self.create_file_selection_section()
 
-        # Configuration Section
+        # Create scrollable frame for configuration sections
+        self.config_scroll_frame = ctk.CTkScrollableFrame(
+            self.parent, fg_color="transparent", height=350
+        )
+        self.config_scroll_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=20, pady=10)
+        self.config_scroll_frame.grid_columnconfigure(0, weight=1)
+        self.config_scroll_frame.grid_columnconfigure(1, weight=1)
+
+        # Configuration Section (now inside scrollable frame)
         self.create_configuration_section()
 
         # Results Section
@@ -209,107 +364,368 @@ class AllocationTab:
 
     def create_configuration_section(self):
         """Create configuration section."""
-        # Left config frame
-        left_config_frame = ctk.CTkFrame(self.parent)
-        left_config_frame.grid(row=2, column=0, sticky="nsew", padx=(20, 10), pady=10)
+        # Left config frame with improved visual grouping (now inside scrollable frame)
+        left_config_frame = ctk.CTkFrame(self.config_scroll_frame, corner_radius=10)
+        left_config_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=10)
         left_config_frame.grid_columnconfigure(1, weight=1)
 
-        left_title = ctk.CTkLabel(
-            left_config_frame, text="Allocation Settings", font=_make_font(size=16, weight="bold")
+        # Header with icon, collapse button and reset button
+        header_frame = ctk.CTkFrame(left_config_frame, fg_color="transparent")
+        header_frame.grid(row=0, column=0, columnspan=3, sticky="ew", padx=15, pady=(15, 5))
+        header_frame.grid_columnconfigure(1, weight=1)
+
+        # Collapse button
+        self.collapse_settings_btn = ctk.CTkButton(
+            header_frame,
+            text="▼",
+            width=30,
+            height=28,
+            font=_make_font(size=14),
+            command=self.toggle_allocation_settings,
+            fg_color="transparent",
+            hover_color=("gray80", "gray25"),
         )
-        left_title.grid(row=0, column=0, columnspan=2, sticky="w", padx=15, pady=(10, 5))
+        self.collapse_settings_btn.grid(row=0, column=0, padx=(0, 5))
 
-        # Allocation date
-        date_label = ctk.CTkLabel(left_config_frame, text="Allocation Date:")
-        date_label.grid(row=1, column=0, sticky="w", padx=15, pady=10)
+        left_title = ctk.CTkLabel(
+            header_frame, text="⚙️ Allocation Settings", font=_make_font(size=16, weight="bold")
+        )
+        left_title.grid(row=0, column=1, sticky="w")
 
-        self.date_entry = ctk.CTkEntry(left_config_frame, textvariable=self.allocation_date)
-        self.date_entry.grid(row=1, column=1, sticky="ew", padx=(10, 15), pady=10)
+        # Reset to defaults button
+        self.reset_settings_btn = ctk.CTkButton(
+            header_frame,
+            text="↺ Reset",
+            width=80,
+            height=28,
+            font=_make_font(size=12),
+            command=self.reset_allocation_settings,
+        )
+        self.reset_settings_btn.grid(row=0, column=2, padx=5)
+
+        # Separator
+        separator1 = ctk.CTkFrame(left_config_frame, height=2, fg_color=("gray80", "gray30"))
+        separator1.grid(row=1, column=0, columnspan=3, sticky="ew", padx=15, pady=(5, 10))
+
+        # Collapsible content frame for allocation settings
+        self.settings_content_frame = ctk.CTkFrame(left_config_frame, fg_color="transparent")
+        self.settings_content_frame.grid(
+            row=2, column=0, columnspan=3, sticky="nsew", padx=0, pady=0
+        )
+        self.settings_content_frame.grid_columnconfigure(1, weight=1)
+
+        # Allocation date with tooltip
+        date_label = ctk.CTkLabel(self.settings_content_frame, text="Allocation Date:")
+        date_label.grid(row=2, column=0, sticky="w", padx=15, pady=10)
+        self._create_tooltip(date_label, "Date for the allocation run (format: YYYY-MM-DD)")
+
+        self.date_entry = ctk.CTkEntry(
+            self.settings_content_frame, textvariable=self.allocation_date
+        )
+        self.date_entry.grid(row=2, column=1, sticky="ew", padx=(10, 15), pady=10)
+
+        # DSP Filter selector
+        dsp_label = ctk.CTkLabel(self.settings_content_frame, text="DSP Filter:")
+        dsp_label.grid(row=3, column=0, sticky="w", padx=15, pady=10)
+        self._create_tooltip(dsp_label, "Filter routes by DSP (Delivery Service Partner)")
+
+        self.dsp_combo = ctk.CTkComboBox(
+            self.settings_content_frame, values=["BWAY", "ALL", "AMZN", "FLEX"], width=120
+        )
+        self.dsp_combo.set("BWAY")
+        self.dsp_combo.grid(row=3, column=1, sticky="w", padx=(10, 15), pady=10)
+
+        # Allocation Strategy selector
+        strategy_label = ctk.CTkLabel(self.settings_content_frame, text="Strategy:")
+        strategy_label.grid(row=4, column=0, sticky="w", padx=15, pady=10)
+        self._create_tooltip(
+            strategy_label, "Allocation strategy: Priority-based, Balanced distribution, or Manual"
+        )
+
+        self.strategy_combo = ctk.CTkComboBox(
+            self.settings_content_frame,
+            values=["Priority-Based", "Balanced", "Experience-Weighted", "Manual Override"],
+            width=150,
+        )
+        self.strategy_combo.set("Priority-Based")
+        self.strategy_combo.grid(row=4, column=1, sticky="w", padx=(10, 15), pady=10)
+
+        # Vehicle constraints section
+        separator2 = ctk.CTkFrame(
+            self.settings_content_frame, height=2, fg_color=("gray80", "gray30")
+        )
+        separator2.grid(row=5, column=0, columnspan=3, sticky="ew", padx=15, pady=(15, 10))
+
+        constraints_label = ctk.CTkLabel(
+            self.settings_content_frame,
+            text="Vehicle Constraints",
+            font=_make_font(size=13, weight="bold"),
+        )
+        constraints_label.grid(row=6, column=0, columnspan=3, sticky="w", padx=15, pady=(5, 10))
 
         # Max vehicles per driver
-        max_vehicles_label = ctk.CTkLabel(left_config_frame, text="Max Vehicles/Driver:")
-        max_vehicles_label.grid(row=2, column=0, sticky="w", padx=15, pady=10)
+        max_vehicles_label = ctk.CTkLabel(self.settings_content_frame, text="Max Vehicles/Driver:")
+        max_vehicles_label.grid(row=7, column=0, sticky="w", padx=15, pady=10)
+        self._create_tooltip(max_vehicles_label, "Maximum number of vehicles per driver (1-10)")
 
         self.max_vehicles_slider = ctk.CTkSlider(
-            left_config_frame, from_=1, to=10, number_of_steps=9
+            self.settings_content_frame, from_=1, to=10, number_of_steps=9
         )
         self.max_vehicles_slider.set(3)
-        self.max_vehicles_slider.grid(row=2, column=1, sticky="ew", padx=(10, 15), pady=10)
+        self.max_vehicles_slider.grid(row=7, column=1, sticky="ew", padx=(10, 15), pady=10)
 
-        self.max_vehicles_value = ctk.CTkLabel(left_config_frame, text="3")
-        self.max_vehicles_value.grid(row=2, column=2, padx=(0, 15), pady=10)
+        self.max_vehicles_value = ctk.CTkLabel(
+            self.settings_content_frame, text="3", font=_make_font(size=12, weight="bold")
+        )
+        self.max_vehicles_value.grid(row=7, column=2, padx=(0, 15), pady=10)
 
         self.max_vehicles_slider.configure(
             command=lambda v: self.max_vehicles_value.configure(text=str(int(v)))
         )
 
         # Min vehicles per driver
-        min_vehicles_label = ctk.CTkLabel(left_config_frame, text="Min Vehicles/Driver:")
-        min_vehicles_label.grid(row=3, column=0, sticky="w", padx=15, pady=10)
+        min_vehicles_label = ctk.CTkLabel(self.settings_content_frame, text="Min Vehicles/Driver:")
+        min_vehicles_label.grid(row=8, column=0, sticky="w", padx=15, pady=10)
+        self._create_tooltip(min_vehicles_label, "Minimum number of vehicles per driver (0-5)")
 
         self.min_vehicles_slider = ctk.CTkSlider(
-            left_config_frame, from_=0, to=5, number_of_steps=5
+            self.settings_content_frame, from_=0, to=5, number_of_steps=5
         )
         self.min_vehicles_slider.set(1)
-        self.min_vehicles_slider.grid(row=3, column=1, sticky="ew", padx=(10, 15), pady=10)
+        self.min_vehicles_slider.grid(row=8, column=1, sticky="ew", padx=(10, 15), pady=10)
 
-        self.min_vehicles_value = ctk.CTkLabel(left_config_frame, text="1")
-        self.min_vehicles_value.grid(row=3, column=2, padx=(0, 15), pady=10)
+        self.min_vehicles_value = ctk.CTkLabel(
+            self.settings_content_frame, text="1", font=_make_font(size=12, weight="bold")
+        )
+        self.min_vehicles_value.grid(row=8, column=2, padx=(0, 15), pady=10)
 
         self.min_vehicles_slider.configure(
             command=lambda v: self.min_vehicles_value.configure(text=str(int(v)))
         )
 
         # Priority weight
-        priority_label = ctk.CTkLabel(left_config_frame, text="Priority Weight:")
-        priority_label.grid(row=4, column=0, sticky="w", padx=15, pady=10)
+        priority_label = ctk.CTkLabel(self.settings_content_frame, text="Priority Weight:")
+        priority_label.grid(row=9, column=0, sticky="w", padx=15, pady=10)
+        self._create_tooltip(
+            priority_label, "Weight factor for priority-based allocation (1.0-3.0)"
+        )
 
-        self.priority_slider = ctk.CTkSlider(left_config_frame, from_=1.0, to=3.0)
+        self.priority_slider = ctk.CTkSlider(self.settings_content_frame, from_=1.0, to=3.0)
         self.priority_slider.set(1.5)
-        self.priority_slider.grid(row=4, column=1, sticky="ew", padx=(10, 15), pady=10)
+        self.priority_slider.grid(row=9, column=1, sticky="ew", padx=(10, 15), pady=10)
 
-        self.priority_value = ctk.CTkLabel(left_config_frame, text="1.5")
-        self.priority_value.grid(row=4, column=2, padx=(0, 15), pady=10)
+        self.priority_value = ctk.CTkLabel(
+            self.settings_content_frame, text="1.5", font=_make_font(size=12, weight="bold")
+        )
+        self.priority_value.grid(row=9, column=2, padx=(0, 15), pady=10)
 
         self.priority_slider.configure(
             command=lambda v: self.priority_value.configure(text=f"{v:.1f}")
         )
 
-        # Right config frame (Options)
-        right_config_frame = ctk.CTkFrame(self.parent)
-        right_config_frame.grid(row=2, column=1, sticky="nsew", padx=(10, 20), pady=10)
+        # Configuration presets section
+        separator3 = ctk.CTkFrame(
+            self.settings_content_frame, height=2, fg_color=("gray80", "gray30")
+        )
+        separator3.grid(row=10, column=0, columnspan=3, sticky="ew", padx=15, pady=(15, 10))
+
+        presets_label = ctk.CTkLabel(
+            self.settings_content_frame,
+            text="Configuration Presets",
+            font=_make_font(size=13, weight="bold"),
+        )
+        presets_label.grid(row=11, column=0, columnspan=3, sticky="w", padx=15, pady=(5, 10))
+
+        preset_buttons_frame = ctk.CTkFrame(self.settings_content_frame, fg_color="transparent")
+        preset_buttons_frame.grid(
+            row=12, column=0, columnspan=3, sticky="ew", padx=15, pady=(0, 15)
+        )
+
+        self.save_preset_btn = ctk.CTkButton(
+            preset_buttons_frame,
+            text="💾 Save Preset",
+            width=120,
+            height=32,
+            command=self.save_configuration_preset,
+        )
+        self.save_preset_btn.pack(side="left", padx=(0, 5))
+
+        self.load_preset_btn = ctk.CTkButton(
+            preset_buttons_frame,
+            text="📂 Load Preset",
+            width=120,
+            height=32,
+            command=self.load_configuration_preset,
+        )
+        self.load_preset_btn.pack(side="left", padx=5)
+
+        # Right config frame (Options) with improved visual grouping (now inside scrollable frame)
+        right_config_frame = ctk.CTkFrame(self.config_scroll_frame, corner_radius=10)
+        right_config_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0), pady=10)
+
+        # Header with collapse and reset buttons
+        options_header_frame = ctk.CTkFrame(right_config_frame, fg_color="transparent")
+        options_header_frame.grid(row=0, column=0, sticky="ew", padx=15, pady=(15, 5))
+        options_header_frame.grid_columnconfigure(1, weight=1)
+
+        # Collapse button
+        self.collapse_options_btn = ctk.CTkButton(
+            options_header_frame,
+            text="▼",
+            width=30,
+            height=28,
+            font=_make_font(size=14),
+            command=self.toggle_options,
+            fg_color="transparent",
+            hover_color=("gray80", "gray25"),
+        )
+        self.collapse_options_btn.grid(row=0, column=0, padx=(0, 5))
 
         right_title = ctk.CTkLabel(
-            right_config_frame, text="Options", font=_make_font(size=16, weight="bold")
+            options_header_frame, text="⚡ Options", font=_make_font(size=16, weight="bold")
         )
-        right_title.grid(row=0, column=0, sticky="w", padx=15, pady=(10, 5))
+        right_title.grid(row=0, column=1, sticky="w")
 
-        # Checkboxes
-        self.optimize_checkbox = ctk.CTkCheckBox(
-            right_config_frame, text="Optimize allocation before processing"
+        self.reset_options_btn = ctk.CTkButton(
+            options_header_frame,
+            text="↺ Reset",
+            width=80,
+            height=28,
+            font=_make_font(size=12),
+            command=self.reset_options,
         )
-        self.optimize_checkbox.grid(row=1, column=0, sticky="w", padx=15, pady=10)
+        self.reset_options_btn.grid(row=0, column=2, padx=5)
+
+        # Separator
+        separator_opt1 = ctk.CTkFrame(right_config_frame, height=2, fg_color=("gray80", "gray30"))
+        separator_opt1.grid(row=1, column=0, sticky="ew", padx=15, pady=(5, 10))
+
+        # Collapsible content frame for options
+        self.options_content_frame = ctk.CTkFrame(right_config_frame, fg_color="transparent")
+        self.options_content_frame.grid(row=2, column=0, sticky="nsew", padx=0, pady=0)
+
+        # Processing Options Section
+        processing_label = ctk.CTkLabel(
+            self.options_content_frame, text="Processing", font=_make_font(size=13, weight="bold")
+        )
+        processing_label.grid(row=2, column=0, sticky="w", padx=15, pady=(5, 5))
+
+        self.optimize_checkbox = ctk.CTkCheckBox(
+            self.options_content_frame, text="Optimize allocation before processing"
+        )
+        self.optimize_checkbox.grid(row=3, column=0, sticky="w", padx=20, pady=8)
         self.optimize_checkbox.select()
+        self._create_tooltip(
+            self.optimize_checkbox, "Run optimization algorithms for better allocation results"
+        )
 
         self.validate_checkbox = ctk.CTkCheckBox(
-            right_config_frame, text="Validate results after allocation"
+            self.options_content_frame, text="Validate results after allocation"
         )
-        self.validate_checkbox.grid(row=2, column=0, sticky="w", padx=15, pady=10)
+        self.validate_checkbox.grid(row=4, column=0, sticky="w", padx=20, pady=8)
         self.validate_checkbox.select()
+        self._create_tooltip(
+            self.validate_checkbox, "Check for duplicate assignments and validation errors"
+        )
+
+        self.backup_checkbox = ctk.CTkCheckBox(
+            self.options_content_frame, text="Backup original files before processing"
+        )
+        self.backup_checkbox.grid(row=5, column=0, sticky="w", padx=20, pady=8)
+        self._create_tooltip(
+            self.backup_checkbox, "Create backup copies of input files before modification"
+        )
+
+        self.verbose_logging_checkbox = ctk.CTkCheckBox(
+            self.options_content_frame, text="Enable verbose logging"
+        )
+        self.verbose_logging_checkbox.grid(row=6, column=0, sticky="w", padx=20, pady=8)
+        self._create_tooltip(
+            self.verbose_logging_checkbox, "Generate detailed logs for troubleshooting"
+        )
+
+        # Output Options Section
+        separator_opt2 = ctk.CTkFrame(
+            self.options_content_frame, height=2, fg_color=("gray80", "gray30")
+        )
+        separator_opt2.grid(row=7, column=0, sticky="ew", padx=15, pady=(15, 10))
+
+        output_label = ctk.CTkLabel(
+            self.options_content_frame, text="Output", font=_make_font(size=13, weight="bold")
+        )
+        output_label.grid(row=8, column=0, sticky="w", padx=15, pady=(5, 5))
 
         self.borders_checkbox = ctk.CTkCheckBox(
-            right_config_frame, text="Apply daily section borders"
+            self.options_content_frame, text="Apply daily section borders"
         )
-        self.borders_checkbox.grid(row=3, column=0, sticky="w", padx=15, pady=10)
+        self.borders_checkbox.grid(row=9, column=0, sticky="w", padx=20, pady=8)
         self.borders_checkbox.select()
+        self._create_tooltip(
+            self.borders_checkbox, "Add visual borders to separate daily sections in Excel"
+        )
 
-        self.email_checkbox = ctk.CTkCheckBox(right_config_frame, text="Send email notification")
-        self.email_checkbox.grid(row=4, column=0, sticky="w", padx=15, pady=10)
+        self.pdf_report_checkbox = ctk.CTkCheckBox(
+            self.options_content_frame, text="Generate PDF allocation report"
+        )
+        self.pdf_report_checkbox.grid(row=10, column=0, sticky="w", padx=20, pady=8)
+        self._create_tooltip(
+            self.pdf_report_checkbox, "Create a PDF summary report of allocation results"
+        )
 
         self.open_after_checkbox = ctk.CTkCheckBox(
-            right_config_frame, text="Open Daily Summary Log after completion"
+            self.options_content_frame, text="Open Daily Summary Log after completion"
         )
-        self.open_after_checkbox.grid(row=5, column=0, sticky="w", padx=15, pady=10)
+        self.open_after_checkbox.grid(row=11, column=0, sticky="w", padx=20, pady=8)
+        self._create_tooltip(
+            self.open_after_checkbox, "Automatically open the output file when allocation completes"
+        )
+
+        # Notification Options Section
+        separator_opt3 = ctk.CTkFrame(
+            self.options_content_frame, height=2, fg_color=("gray80", "gray30")
+        )
+        separator_opt3.grid(row=12, column=0, sticky="ew", padx=15, pady=(15, 10))
+
+        notification_label = ctk.CTkLabel(
+            self.options_content_frame,
+            text="Notifications",
+            font=_make_font(size=13, weight="bold"),
+        )
+        notification_label.grid(row=13, column=0, sticky="w", padx=15, pady=(5, 5))
+
+        self.email_checkbox = ctk.CTkCheckBox(
+            self.options_content_frame, text="Send email notification"
+        )
+        self.email_checkbox.grid(row=14, column=0, sticky="w", padx=20, pady=8)
+        self._create_tooltip(self.email_checkbox, "Send email alert when allocation completes")
+
+        self.sound_notification_checkbox = ctk.CTkCheckBox(
+            self.options_content_frame, text="Play notification sound"
+        )
+        self.sound_notification_checkbox.grid(row=15, column=0, sticky="w", padx=20, pady=8)
+        self._create_tooltip(
+            self.sound_notification_checkbox, "Play sound alert when allocation completes"
+        )
+
+        # Advanced Options (collapsible)
+        separator_opt4 = ctk.CTkFrame(
+            self.options_content_frame, height=2, fg_color=("gray80", "gray30")
+        )
+        separator_opt4.grid(row=16, column=0, sticky="ew", padx=15, pady=(15, 10))
+
+        self.advanced_frame = ctk.CTkFrame(self.options_content_frame, fg_color="transparent")
+        self.advanced_frame.grid(row=17, column=0, sticky="ew", padx=15, pady=(0, 15))
+
+        self.show_advanced_btn = ctk.CTkButton(
+            self.advanced_frame,
+            text="▼ Advanced Settings",
+            width=160,
+            height=32,
+            fg_color="transparent",
+            border_width=1,
+            command=self.toggle_advanced_settings,
+        )
+        self.show_advanced_btn.pack(pady=5)
         # Initialize from persisted settings if available
         try:
             self._apply_open_after_preference()
@@ -388,7 +804,7 @@ class AllocationTab:
         self.open_results_button = ctk.CTkButton(
             button_container,
             text="📂 Open Results File",
-            width=140,
+            width=160,
             height=40,
             state="disabled",
             command=self.open_results_file,
@@ -400,12 +816,12 @@ class AllocationTab:
         self.sample_button = ctk.CTkButton(
             button_container,
             text="📝 Create Sample",
-            width=130,
+            width=140,
             height=40,
             command=self.create_sample_data,
             font=_make_font(size=14, weight="bold"),
         )
-        self.sample_button.grid(row=0, column=3, padx=5)
+        self.sample_button.grid(row=0, column=4, padx=5)
 
     def _apply_default_daily_summary(self):
         """Prefill the Daily Summary selector from persisted settings if enabled.
@@ -462,18 +878,52 @@ class AllocationTab:
 
     def run_allocation(self):
         """Run the allocation process."""
+        self.telemetry.log_user_action("click", "run_allocation_button")
+
         # Validate inputs
         if not self.day_of_ops_path.get():
+            self.telemetry.log_validation_event(
+                "input_validation_failed",
+                {"field": "day_of_ops", "reason": "no_file_selected"},
+                "warning",
+            )
             self.show_error("Please select Day of Ops file")
             return
 
         if not self.daily_routes_path.get():
+            self.telemetry.log_validation_event(
+                "input_validation_failed",
+                {"field": "daily_routes", "reason": "no_file_selected"},
+                "warning",
+            )
             self.show_error("Please select Daily Routes file")
             return
 
         if not self.daily_summary_path.get():
+            self.telemetry.log_validation_event(
+                "input_validation_failed",
+                {"field": "daily_summary", "reason": "no_file_selected"},
+                "warning",
+            )
             self.show_error("Please select Daily Summary Log file")
             return
+
+        # Log allocation configuration
+        self.telemetry.log_allocation_event(
+            "started",
+            {
+                "day_of_ops": Path(self.day_of_ops_path.get()).name,
+                "daily_routes": Path(self.daily_routes_path.get()).name,
+                "daily_summary": Path(self.daily_summary_path.get()).name,
+                "allocation_date": self.allocation_date.get(),
+                "dsp_filter": self.dsp_combo.get(),
+                "strategy": self.strategy_combo.get(),
+                "max_vehicles": int(self.max_vehicles_slider.get()),
+                "min_vehicles": int(self.min_vehicles_slider.get()),
+                "optimize": self.optimize_checkbox.get(),
+                "validate": self.validate_checkbox.get(),
+            },
+        )
 
         # Update UI state
         self.run_button.configure(state="disabled")
@@ -490,9 +940,11 @@ class AllocationTab:
 
     def _run_allocation_thread(self):
         """Run GAS-compatible allocation in separate thread."""
+        self.telemetry.start_operation("allocation_process")
         try:
             self.update_results("Starting GAS-compatible allocation process...\n")
             self.update_progress(0.1)
+            self.telemetry.log_allocation_event("process_started")
 
             # Create GAS allocator instance
             allocator = GASCompatibleAllocator()
@@ -608,6 +1060,22 @@ class AllocationTab:
             if hasattr(self, "results_file_path"):
                 self.update_results(f"\n📄 Results saved to: {self.results_file_path}\n")
 
+            # Log successful completion
+            self.telemetry.end_operation(
+                "allocation_process",
+                success=True,
+                details={
+                    "total_routes": len(allocator.allocation_results),
+                    "assigned_routes": len(
+                        [r for r in allocator.allocation_results if r.get("Van ID")]
+                    ),
+                    "unassigned_vehicles": len(allocator.unassigned_vehicles)
+                    if hasattr(allocator, "unassigned_vehicles")
+                    else 0,
+                    "warnings": len(result.warnings) if result.warnings else 0,
+                },
+            )
+
             # Open file if requested
             if self.open_after_checkbox.get():
                 summary_path = self.daily_summary_path.get()
@@ -615,6 +1083,14 @@ class AllocationTab:
                 self._open_daily_summary_log_async(summary_path)
 
         except Exception as e:
+            self.telemetry.end_operation(
+                "allocation_process",
+                success=False,
+                details={"error": str(e), "error_type": type(e).__name__},
+            )
+            self.telemetry.log_error(
+                "allocation_failed", str(e), {"traceback": __import__("traceback").format_exc()}
+            )
             logger.error(f"GAS allocation failed: {e}")
             self.update_results(f"\n❌ Error: {str(e)}\n")
             import traceback
@@ -1153,3 +1629,247 @@ class AllocationTab:
         )
 
         messagebox.showinfo("Duplicate Assignment Help", help_text)
+
+    def _create_tooltip(self, widget, text: str):
+        """Create a tooltip for a widget.
+
+        Args:
+            widget: The widget to attach tooltip to.
+            text: Tooltip text to display.
+        """
+
+        def on_enter(_event):
+            tooltip = ctk.CTkToplevel(widget)
+            tooltip.wm_overrideredirect(True)
+            tooltip.wm_geometry(f"+{widget.winfo_rootx() + 20}+{widget.winfo_rooty() + 30}")
+
+            label = ctk.CTkLabel(
+                tooltip,
+                text=text,
+                font=_make_font(size=11),
+                fg_color=("gray85", "gray25"),
+                corner_radius=5,
+                padx=10,
+                pady=5,
+            )
+            label.pack()
+
+            widget._tooltip = tooltip
+
+        def on_leave(_event):
+            if hasattr(widget, "_tooltip"):
+                widget._tooltip.destroy()
+                delattr(widget, "_tooltip")
+
+        widget.bind("<Enter>", on_enter)
+        widget.bind("<Leave>", on_leave)
+
+    def reset_allocation_settings(self):
+        """Reset allocation settings to defaults."""
+        self.telemetry.log_user_action("reset", "allocation_settings")
+        self.allocation_date.set(date.today().strftime("%Y-%m-%d"))
+        self.dsp_combo.set("BWAY")
+        self.strategy_combo.set("Priority-Based")
+        self.max_vehicles_slider.set(3)
+        self.min_vehicles_slider.set(1)
+        self.priority_slider.set(1.5)
+        self.telemetry.log_user_action(
+            "reset_completed",
+            "allocation_settings",
+            {
+                "dsp": "BWAY",
+                "strategy": "Priority-Based",
+                "max_vehicles": 3,
+                "min_vehicles": 1,
+                "priority_weight": 1.5,
+            },
+        )
+        logger.info("Allocation settings reset to defaults")
+
+    def reset_options(self):
+        """Reset options to defaults."""
+        self.telemetry.log_user_action("reset", "options")
+        self.optimize_checkbox.select()
+        self.validate_checkbox.select()
+        self.backup_checkbox.deselect()
+        self.verbose_logging_checkbox.deselect()
+        self.borders_checkbox.select()
+        self.pdf_report_checkbox.deselect()
+        self.open_after_checkbox.deselect()
+        self.email_checkbox.deselect()
+        self.sound_notification_checkbox.deselect()
+        self.telemetry.log_user_action(
+            "reset_completed",
+            "options",
+            {
+                "optimize": True,
+                "validate": True,
+                "backup": False,
+                "verbose": False,
+                "borders": True,
+                "pdf_report": False,
+                "open_after": False,
+                "email": False,
+                "sound": False,
+            },
+        )
+        logger.info("Options reset to defaults")
+
+    def save_configuration_preset(self):
+        """Save current configuration as a preset."""
+        self.telemetry.log_user_action("save_preset", "configuration", {"action": "initiated"})
+        preset_name = ctk.CTkInputDialog(
+            text="Enter preset name:", title="Save Configuration Preset"
+        ).get_input()
+
+        if preset_name:
+            self.telemetry.log_user_action(
+                "save_preset", "configuration", {"preset_name": preset_name}
+            )
+            preset_data = {
+                "allocation_date": self.allocation_date.get(),
+                "dsp_filter": self.dsp_combo.get(),
+                "strategy": self.strategy_combo.get(),
+                "max_vehicles": int(self.max_vehicles_slider.get()),
+                "min_vehicles": int(self.min_vehicles_slider.get()),
+                "priority_weight": float(self.priority_slider.get()),
+                "optimize": self.optimize_checkbox.get(),
+                "validate": self.validate_checkbox.get(),
+                "backup": self.backup_checkbox.get(),
+                "verbose_logging": self.verbose_logging_checkbox.get(),
+                "borders": self.borders_checkbox.get(),
+                "pdf_report": self.pdf_report_checkbox.get(),
+                "open_after": self.open_after_checkbox.get(),
+                "email": self.email_checkbox.get(),
+                "sound_notification": self.sound_notification_checkbox.get(),
+            }
+
+            # Save to config file
+            config_dir = Path("config/presets")
+            config_dir.mkdir(parents=True, exist_ok=True)
+            preset_file = config_dir / f"{preset_name}.json"
+
+            try:
+                with open(preset_file, "w", encoding="utf-8") as f:
+                    json.dump(preset_data, f, indent=2)
+                self.telemetry.log_user_action(
+                    "save_preset_completed",
+                    "configuration",
+                    {"preset_name": preset_name, "status": "success"},
+                )
+                logger.info(f"Configuration preset saved: {preset_name}")
+                messagebox.showinfo("Success", f"Preset '{preset_name}' saved successfully!")
+            except Exception as e:
+                self.telemetry.log_error("preset_save_failed", str(e), {"preset_name": preset_name})
+                logger.error(f"Failed to save preset: {e}")
+                messagebox.showerror("Error", f"Failed to save preset: {str(e)}")
+
+    def load_configuration_preset(self):
+        """Load a configuration preset."""
+        config_dir = Path("config/presets")
+        if not config_dir.exists():
+            messagebox.showinfo("No Presets", "No configuration presets found.")
+            return
+
+        # Get list of presets
+        presets = [f.stem for f in config_dir.glob("*.json")]
+        if not presets:
+            messagebox.showinfo("No Presets", "No configuration presets found.")
+            return
+
+        # Show preset selection dialog
+        preset_dialog = ctk.CTkInputDialog(
+            text=f"Available presets:\n{', '.join(presets)}\n\nEnter preset name to load:",
+            title="Load Configuration Preset",
+        )
+        preset_name = preset_dialog.get_input()
+
+        if preset_name:
+            preset_file = config_dir / f"{preset_name}.json"
+            if not preset_file.exists():
+                messagebox.showerror("Error", f"Preset '{preset_name}' not found.")
+                return
+
+            try:
+                with open(preset_file, encoding="utf-8") as f:
+                    preset_data = json.load(f)
+
+                # Apply preset data
+                self.allocation_date.set(
+                    preset_data.get("allocation_date", date.today().strftime("%Y-%m-%d"))
+                )
+                self.dsp_combo.set(preset_data.get("dsp_filter", "BWAY"))
+                self.strategy_combo.set(preset_data.get("strategy", "Priority-Based"))
+                self.max_vehicles_slider.set(preset_data.get("max_vehicles", 3))
+                self.min_vehicles_slider.set(preset_data.get("min_vehicles", 1))
+                self.priority_slider.set(preset_data.get("priority_weight", 1.5))
+
+                # Apply checkboxes
+                self._set_checkbox(self.optimize_checkbox, preset_data.get("optimize", True))
+                self._set_checkbox(self.validate_checkbox, preset_data.get("validate", True))
+                self._set_checkbox(self.backup_checkbox, preset_data.get("backup", False))
+                self._set_checkbox(
+                    self.verbose_logging_checkbox, preset_data.get("verbose_logging", False)
+                )
+                self._set_checkbox(self.borders_checkbox, preset_data.get("borders", True))
+                self._set_checkbox(self.pdf_report_checkbox, preset_data.get("pdf_report", False))
+                self._set_checkbox(self.open_after_checkbox, preset_data.get("open_after", False))
+                self._set_checkbox(self.email_checkbox, preset_data.get("email", False))
+                self._set_checkbox(
+                    self.sound_notification_checkbox, preset_data.get("sound_notification", False)
+                )
+
+                logger.info(f"Configuration preset loaded: {preset_name}")
+                messagebox.showinfo("Success", f"Preset '{preset_name}' loaded successfully!")
+            except Exception as e:
+                logger.error(f"Failed to load preset: {e}")
+                messagebox.showerror("Error", f"Failed to load preset: {str(e)}")
+
+    def _set_checkbox(self, checkbox, value: bool):
+        """Helper to set checkbox state."""
+        if value:
+            checkbox.select()
+        else:
+            checkbox.deselect()
+
+    def toggle_advanced_settings(self):
+        """Toggle advanced settings visibility."""
+        # This will be implemented to show/hide advanced options panel
+        if self.show_advanced_btn.cget("text").startswith("▼"):
+            self.show_advanced_btn.configure(text="▲ Advanced Settings")
+            # TODO: Show advanced settings panel
+            logger.info("Advanced settings expanded")
+        else:
+            self.show_advanced_btn.configure(text="▼ Advanced Settings")
+            # TODO: Hide advanced settings panel
+            logger.info("Advanced settings collapsed")
+
+    def toggle_allocation_settings(self):
+        """Toggle allocation settings section visibility."""
+        if self.collapse_settings_btn.cget("text") == "▼":
+            # Collapse - hide content
+            self.settings_content_frame.grid_remove()
+            self.collapse_settings_btn.configure(text="▶")
+            self.telemetry.log_user_action("collapse", "allocation_settings")
+            logger.debug("Allocation settings collapsed")
+        else:
+            # Expand - show content
+            self.settings_content_frame.grid()
+            self.collapse_settings_btn.configure(text="▼")
+            self.telemetry.log_user_action("expand", "allocation_settings")
+            logger.debug("Allocation settings expanded")
+
+    def toggle_options(self):
+        """Toggle options section visibility."""
+        if self.collapse_options_btn.cget("text") == "▼":
+            # Collapse - hide content
+            self.options_content_frame.grid_remove()
+            self.collapse_options_btn.configure(text="▶")
+            self.telemetry.log_user_action("collapse", "options")
+            logger.debug("Options collapsed")
+        else:
+            # Expand - show content
+            self.options_content_frame.grid()
+            self.collapse_options_btn.configure(text="▼")
+            self.telemetry.log_user_action("expand", "options")
+            logger.debug("Options expanded")

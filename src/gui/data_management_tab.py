@@ -3,6 +3,7 @@
 import threading
 import tkinter as tk
 from contextlib import suppress
+from pathlib import Path
 from tkinter import StringVar, filedialog, messagebox, ttk
 
 import customtkinter as ctk
@@ -79,7 +80,12 @@ class DataManagementTab:
         self.source_menu = ctk.CTkOptionMenu(
             file_controls,
             variable=self.source_var,
-            values=["Daily Summary (Vehicle Status)", "Custom Workbook (Vehicles)"],
+            values=[
+                "Fleet Inventory (VehiclesData.xlsx)",
+                "Daily Summary (Vehicle Status)",
+                "Associate Data (Drivers)",
+                "Custom Workbook (Vehicles)",
+            ],
         )
         self.source_menu.grid(row=0, column=1, padx=(0, 10))
 
@@ -114,7 +120,7 @@ class DataManagementTab:
         tree_frame.grid_columnconfigure(0, weight=1)
         tree_frame.grid_rowconfigure(0, weight=1)
 
-        # Treeview
+        # Treeview - support multiple column configurations
         columns = ("ID", "Vehicle Number", "Type", "Location", "Status", "Priority", "Capacity")
         self.vehicles_columns_base = columns
         self.vehicles_columns_enriched = (
@@ -129,7 +135,23 @@ class DataManagementTab:
             "GeoTab",
             "Brand/Rental",
         )
+        # Full fleet inventory columns for VehiclesData.xlsx
+        self.vehicles_columns_fleet = (
+            "ID",
+            "Vehicle Name",
+            "VIN",
+            "Service Type",
+            "Status",
+            "Ownership",
+            "Make",
+            "Model",
+            "Year",
+            "License Plate",
+            "Reg. Expiry",
+            "Station",
+        )
         self._vehicle_enriched = False
+        self._vehicle_mode = "base"  # base, enriched, or fleet
         self.vehicles_tree = ttk.Treeview(
             tree_frame, columns=columns, show="tree headings", selectmode="extended"
         )
@@ -193,16 +215,18 @@ class DataManagementTab:
         tree_frame.grid_columnconfigure(0, weight=1)
         tree_frame.grid_rowconfigure(0, weight=1)
 
-        # Treeview
+        # Treeview with extended columns for associate data
         columns = (
             "ID",
-            "Employee ID",
+            "TransporterID",
             "Name",
-            "Location",
+            "Position",
+            "Qualifications",
+            "ID Expiration",
+            "Personal Phone",
+            "Work Phone",
+            "Email",
             "Status",
-            "Priority",
-            "Experience",
-            "License Type",
         )
         self.drivers_tree = ttk.Treeview(
             tree_frame, columns=columns, show="tree headings", selectmode="extended"
@@ -212,24 +236,28 @@ class DataManagementTab:
         # Configure columns
         self.drivers_tree.heading("#0", text="")
         self.drivers_tree.heading("ID", text="ID")
-        self.drivers_tree.heading("Employee ID", text="Employee ID")
+        self.drivers_tree.heading("TransporterID", text="TransporterID")
         self.drivers_tree.heading("Name", text="Name")
-        self.drivers_tree.heading("Location", text="Location")
+        self.drivers_tree.heading("Position", text="Position")
+        self.drivers_tree.heading("Qualifications", text="Qualifications")
+        self.drivers_tree.heading("ID Expiration", text="ID Expiration")
+        self.drivers_tree.heading("Personal Phone", text="Personal Phone")
+        self.drivers_tree.heading("Work Phone", text="Work Phone")
+        self.drivers_tree.heading("Email", text="Email")
         self.drivers_tree.heading("Status", text="Status")
-        self.drivers_tree.heading("Priority", text="Priority")
-        self.drivers_tree.heading("Experience", text="Experience")
-        self.drivers_tree.heading("License Type", text="License Type")
 
-        # Column widths
+        # Column widths optimized for associate data
         self.drivers_tree.column("#0", width=0, stretch=False)
         self.drivers_tree.column("ID", width=50)
-        self.drivers_tree.column("Employee ID", width=100)
-        self.drivers_tree.column("Name", width=150)
-        self.drivers_tree.column("Location", width=100)
+        self.drivers_tree.column("TransporterID", width=130)
+        self.drivers_tree.column("Name", width=180)
+        self.drivers_tree.column("Position", width=100)
+        self.drivers_tree.column("Qualifications", width=250)
+        self.drivers_tree.column("ID Expiration", width=100)
+        self.drivers_tree.column("Personal Phone", width=120)
+        self.drivers_tree.column("Work Phone", width=120)
+        self.drivers_tree.column("Email", width=180)
         self.drivers_tree.column("Status", width=80)
-        self.drivers_tree.column("Priority", width=80)
-        self.drivers_tree.column("Experience", width=80)
-        self.drivers_tree.column("License Type", width=100)
 
         # Scrollbars
         v_scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.drivers_tree.yview)
@@ -307,6 +335,20 @@ class DataManagementTab:
         )
         export_button.grid(row=0, column=7, padx=5)
 
+        # Qualification filter for drivers only
+        if data_type == "driver":
+            filter_label = ctk.CTkLabel(toolbar, text="Filter:")
+            filter_label.grid(row=0, column=8, padx=(20, 5))
+
+            self.qual_filter = ctk.CTkComboBox(
+                toolbar,
+                values=["All", "Step Van", "EDV", "CDV", "DOT", "Helper Only"],
+                width=120,
+                command=lambda val: self.filter_by_qualification(val),
+            )
+            self.qual_filter.set("All")
+            self.qual_filter.grid(row=0, column=9, padx=5)
+
         return toolbar
 
     def create_statistics_panel(self, parent, data_type: str):
@@ -364,8 +406,94 @@ class DataManagementTab:
         sample_button.grid(row=0, column=2, padx=5)
 
     def load_data(self):
-        """Load data from Excel file."""
+        """Load data from Excel file or CSV."""
         selected_source = self.source_var.get()
+
+        # Handle Fleet Inventory loading (VehiclesData.xlsx)
+        if selected_source.startswith("Fleet Inventory"):
+
+            def load_fleet_inventory():
+                try:
+                    if not self.data_service:
+                        raise ValueError("Data service not available")
+
+                    # Resolve path or prompt
+                    fleet_path = Path("bway_files") / "VehiclesData.xlsx"
+                    if not fleet_path.exists():
+                        # Try inputs folder
+                        fleet_path = Path("inputs") / "VehiclesData.xlsx"
+                    if not fleet_path.exists():
+                        # Prompt user
+                        selected_path = filedialog.askopenfilename(
+                            title="Select VehiclesData.xlsx",
+                            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")],
+                        )
+                        if not selected_path:
+                            return
+                        fleet_path = Path(selected_path)
+
+                    df = self.data_service.load_vehicles_data(str(fleet_path))
+                    if df is None or df.empty:
+                        raise ValueError("Fleet inventory data not found or empty")
+
+                    self.populate_vehicles_tree(df)
+
+                    # Clear drivers when loading fleet inventory
+                    self.drivers_tree.delete(*self.drivers_tree.get_children())
+
+                    self.current_file = str(fleet_path)
+                    self.save_button.configure(state="normal")
+                    logger.info(f"Loaded {len(df)} vehicles from fleet inventory: {fleet_path}")
+
+                except Exception as e:
+                    logger.error(f"Failed to load fleet inventory: {e}")
+                    messagebox.showerror("Load Error", str(e))
+
+            threading.Thread(target=load_fleet_inventory, daemon=True).start()
+            return
+
+        # Handle Associate Data loading
+        if selected_source.startswith("Associate Data"):
+
+            def load_associates():
+                try:
+                    if not self.data_service:
+                        raise ValueError("Data service not available")
+
+                    # Resolve path or prompt
+                    assoc_path = Path("bway_files") / "AssociateData.csv"
+                    if not assoc_path.exists():
+                        # Try inputs folder
+                        assoc_path = Path("inputs") / "AssociateData.csv"
+                    if not assoc_path.exists():
+                        # Prompt user
+                        selected_path = filedialog.askopenfilename(
+                            title="Select AssociateData.csv",
+                            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+                        )
+                        if not selected_path:
+                            return
+                        assoc_path = Path(selected_path)
+
+                    df = self.data_service.load_associate_data(str(assoc_path))
+                    if df is None or df.empty:
+                        raise ValueError("Associate data not found or empty")
+
+                    self.populate_drivers_tree(df)
+
+                    # Clear vehicles when loading associates
+                    self.vehicles_tree.delete(*self.vehicles_tree.get_children())
+
+                    self.current_file = str(assoc_path)
+                    self.save_button.configure(state="normal")
+                    logger.info(f"Loaded {len(df)} associates from {assoc_path}")
+
+                except Exception as e:
+                    logger.error(f"Failed to load associate data: {e}")
+                    messagebox.showerror("Load Error", str(e))
+
+            threading.Thread(target=load_associates, daemon=True).start()
+            return
 
         if selected_source.startswith("Daily Summary"):
             # Resolve Daily Summary path
@@ -512,18 +640,55 @@ class DataManagementTab:
     def populate_vehicles_tree(self, df: pd.DataFrame):
         """Populate vehicles treeview with data.
 
-        Accepts DataFrames from either legacy "Vehicles" sheet or Daily Summary
-        "Vehicle Status" and maps columns accordingly.
+        Accepts DataFrames from:
+        - VehiclesData.xlsx (fleet inventory with 28 columns)
+        - Daily Summary Vehicle Status (operational snapshot)
+        - Legacy Vehicles sheet
+
+        Maps columns accordingly based on detected format.
         """
         # Clear existing data
         self.vehicles_tree.delete(*self.vehicles_tree.get_children())
 
         # Normalize source columns
         cols_map = {c.lower().strip(): c for c in df.columns}
+        is_vehicles_data = "vin" in cols_map and "vehiclename" in cols_map
         is_vehicle_status = ("van id" in cols_map) or ("vehicle id" in cols_map)
 
         rows = []
-        if is_vehicle_status:
+        if is_vehicles_data:
+            # VehiclesData.xlsx format - comprehensive fleet inventory
+            for _, row in df.iterrows():
+                # Map operational status to availability
+                op_status = str(row.get("operationalStatus", "")).upper()
+                status = "available" if op_status == "OPERATIONAL" else "unavailable"
+
+                # Format registration expiry date
+                reg_expiry = row.get("registrationExpiryDate", "")
+                if pd.notna(reg_expiry):
+                    try:
+                        reg_expiry = pd.to_datetime(reg_expiry).strftime("%m/%d/%Y")
+                    except Exception:
+                        reg_expiry = str(reg_expiry)
+                else:
+                    reg_expiry = ""
+
+                rows.append(
+                    (
+                        str(row.get("vehicleName", "")).strip(),
+                        str(row.get("vin", "")).strip(),
+                        str(row.get("serviceType", "")).strip(),
+                        status,
+                        str(row.get("ownershipType", "")).strip(),
+                        str(row.get("make", "")).strip(),
+                        str(row.get("model", "")).strip(),
+                        str(row.get("year", "")).strip(),
+                        str(row.get("licensePlateNumber", "")).strip(),
+                        reg_expiry,
+                        str(row.get("stationCode", "")).strip(),
+                    )
+                )
+        elif is_vehicle_status:
             van_col = cols_map.get("van id") or cols_map.get("vehicle id")
             type_col = cols_map.get("type") or cols_map.get("vehicle type")
             op_col = cols_map.get("opnal? y/n") or cols_map.get("operational")
@@ -550,28 +715,45 @@ class DataManagementTab:
         # Persist current dataset for validation/export
         self.current_data["vehicles"] = df.copy()
 
-        # Insert rows
-        # Enrichment-aware column setup
-        has_enrichment = hasattr(self, "_vehicle_details") and bool(self._vehicle_details)
-        if has_enrichment and not self._vehicle_enriched:
-            self._configure_vehicle_columns(enriched=True)
-        if not has_enrichment and self._vehicle_enriched:
-            self._configure_vehicle_columns(enriched=False)
+        # Configure columns based on data source
+        if is_vehicles_data:
+            # Fleet inventory mode with comprehensive columns
+            self._configure_vehicle_columns(mode="fleet")
 
-        for idx, (veh, vtype, loc, status, prio, cap) in enumerate(rows, start=1):
-            if self._vehicle_enriched:
-                det = (
-                    self._vehicle_details.get(str(veh), {})
-                    if hasattr(self, "_vehicle_details")
-                    else {}
-                )
-                vin = det.get("VIN", "")
-                geo = det.get("GeoTab", "")
-                brand = det.get("Branded/Rental", "")
-                vals = (idx, veh, vtype, loc, status, prio, cap, vin, geo, brand)
-            else:
-                vals = (idx, veh, vtype, loc, status, prio, cap)
-            self.vehicles_tree.insert("", "end", values=vals)
+            # Insert fleet data rows
+            for idx, row_data in enumerate(rows, start=1):
+                vals = (idx,) + row_data
+                # Color-code by operational status
+                status = row_data[3]  # Status column
+                tag = "operational" if status == "available" else "grounded"
+                self.vehicles_tree.insert("", "end", values=vals, tags=(tag,))
+
+            # Configure status tags with colors
+            self.vehicles_tree.tag_configure("operational", foreground="#34d058")
+            self.vehicles_tree.tag_configure("grounded", foreground="#ff6b6b")
+
+        else:
+            # Legacy enrichment-aware column setup for Daily Summary / legacy formats
+            has_enrichment = hasattr(self, "_vehicle_details") and bool(self._vehicle_details)
+            if has_enrichment and self._vehicle_mode != "enriched":
+                self._configure_vehicle_columns(mode="enriched")
+            elif not has_enrichment and self._vehicle_mode != "base":
+                self._configure_vehicle_columns(mode="base")
+
+            for idx, (veh, vtype, loc, status, prio, cap) in enumerate(rows, start=1):
+                if self._vehicle_mode == "enriched":
+                    det = (
+                        self._vehicle_details.get(str(veh), {})
+                        if hasattr(self, "_vehicle_details")
+                        else {}
+                    )
+                    vin = det.get("VIN", "")
+                    geo = det.get("GeoTab", "")
+                    brand = det.get("Branded/Rental", "")
+                    vals = (idx, veh, vtype, loc, status, prio, cap, vin, geo, brand)
+                else:
+                    vals = (idx, veh, vtype, loc, status, prio, cap)
+                self.vehicles_tree.insert("", "end", values=vals)
 
         # After inserting, refresh overlay
         self.parent.after(10, self._update_vehicle_status_overlays)
@@ -677,29 +859,58 @@ class DataManagementTab:
 
     # Zebra helpers removed
 
-    def _configure_vehicle_columns(self, enriched: bool):
-        """Configure vehicles tree columns depending on enrichment presence."""
-        self._vehicle_enriched = enriched
-        cols = self.vehicles_columns_enriched if enriched else self.vehicles_columns_base
+    def _configure_vehicle_columns(self, enriched: bool = False, mode: str = "base"):
+        """Configure vehicles tree columns depending on data source.
+
+        Args:
+            enriched: Legacy parameter for backward compatibility
+            mode: Column mode - "base", "enriched", or "fleet"
+        """
+        # Support legacy enriched parameter
+        if enriched and mode == "base":
+            mode = "enriched"
+
+        self._vehicle_mode = mode
+        self._vehicle_enriched = enriched or (mode == "enriched")
+
+        # Select column set based on mode
+        if mode == "fleet":
+            cols = self.vehicles_columns_fleet
+        elif mode == "enriched":
+            cols = self.vehicles_columns_enriched
+        else:
+            cols = self.vehicles_columns_base
+
         self.vehicles_tree.configure(columns=cols)
+
         # Headings
         self.vehicles_tree.heading("#0", text="")
         for name in cols:
             text = "ID" if name == "ID" else name
             self.vehicles_tree.heading(name, text=text)
-        # Widths
+
+        # Widths - comprehensive map for all column types
         self.vehicles_tree.column("#0", width=0, stretch=False)
         width_map = {
             "ID": 50,
             "Vehicle Number": 120,
+            "Vehicle Name": 120,
             "Type": 100,
             "Location": 100,
             "Status": 100,
             "Priority": 80,
             "Capacity": 80,
-            "VIN": 130,
+            "VIN": 150,
             "GeoTab": 110,
             "Brand/Rental": 120,
+            "Service Type": 200,
+            "Ownership": 120,
+            "Make": 100,
+            "Model": 120,
+            "Year": 60,
+            "License Plate": 100,
+            "Reg. Expiry": 100,
+            "Station": 80,
         }
         for name in cols:
             self.vehicles_tree.column(name, width=width_map.get(name, 100))
@@ -720,31 +931,110 @@ class DataManagementTab:
             return 0
 
     def populate_drivers_tree(self, df: pd.DataFrame):
-        """Populate drivers treeview with data."""
+        """Populate drivers treeview with data.
+
+        Handles both legacy driver sheets and AssociateData.csv format.
+        """
         # Clear existing data
         self.drivers_tree.delete(*self.drivers_tree.get_children())
 
-        # Add data
-        for idx, row in df.iterrows():
-            values = (
-                idx + 1,
-                row.get("Employee ID", ""),
-                row.get("Name", ""),
-                row.get("Location", ""),
-                row.get("Status", ""),
-                row.get("Priority", ""),
-                row.get("Experience", ""),
-                row.get("License Type", ""),
-            )
-            self.drivers_tree.insert("", "end", values=values)
+        # Detect source format
+        cols_map = {c.lower().strip(): c for c in df.columns}
+        is_associate_data = "transporterid" in cols_map or "name and id" in cols_map
 
-        # Update statistics
-        total = len(df)
-        active = len(df[df.get("Status", "") == "active"]) if "Status" in df else 0
-        avg_exp = df["Experience"].mean() if "Experience" in df else 0
-        self.drivers_stats_label.configure(
-            text=f"Total: {total} | Active: {active} | Inactive: {total - active} | Average Experience: {avg_exp:.1f} years"
-        )
+        if is_associate_data:
+            # Map AssociateData.csv columns
+            for idx, row in df.iterrows():
+                # Parse expiration date safely
+                exp_date = row.get("ID expiration", "")
+                if pd.notna(exp_date):
+                    try:
+                        exp_date = pd.to_datetime(exp_date).strftime("%m/%d/%Y")
+                    except Exception:
+                        exp_date = str(exp_date)
+                else:
+                    exp_date = ""
+
+                values = (
+                    idx + 1,
+                    str(row.get("TransporterID", "")).strip(),
+                    str(row.get("Name and ID", "")).strip(),
+                    str(row.get("Position", "")).strip(),
+                    str(row.get("Qualifications", "")).strip(),
+                    exp_date,
+                    str(row.get("Personal Phone Number", "")).strip(),
+                    str(row.get("Work Phone Number", "")).strip(),
+                    str(row.get("Email", "")).strip(),
+                    str(row.get("Status", "")).strip(),
+                )
+
+                # Color-code by status
+                status = str(row.get("Status", "")).upper()
+                tag = "active" if status == "ACTIVE" else "inactive"
+                self.drivers_tree.insert("", "end", values=values, tags=(tag,))
+
+            # Configure status tags with colors
+            self.drivers_tree.tag_configure("active", foreground="#34d058")
+            self.drivers_tree.tag_configure("inactive", foreground="#ff6b6b")
+
+            # Update statistics with expiration warnings
+            total = len(df)
+            active = (
+                len(df[df.get("Status", "").str.upper() == "ACTIVE"])
+                if "Status" in df.columns
+                else 0
+            )
+            inactive = total - active
+
+            # Calculate expiration warnings
+            exp_col = "ID expiration"
+            if exp_col in df.columns:
+                today = pd.Timestamp.now()
+                df_exp = df[pd.notna(df[exp_col])].copy()
+                df_exp[exp_col] = pd.to_datetime(df_exp[exp_col], errors="coerce")
+                expiring_soon = len(
+                    df_exp[
+                        (df_exp[exp_col] >= today)
+                        & (df_exp[exp_col] <= today + pd.Timedelta(days=30))
+                    ]
+                )
+                expired = len(df_exp[df_exp[exp_col] < today])
+
+                self.drivers_stats_label.configure(
+                    text=f"Total: {total} | Active: {active} | Inactive: {inactive} | "
+                    f"Expiring Soon: {expiring_soon} | Expired: {expired}"
+                )
+            else:
+                self.drivers_stats_label.configure(
+                    text=f"Total: {total} | Active: {active} | Inactive: {inactive}"
+                )
+
+        else:
+            # Legacy format handling
+            for idx, row in df.iterrows():
+                values = (
+                    idx + 1,
+                    row.get("Employee ID", ""),
+                    row.get("Name", ""),
+                    row.get("Location", ""),
+                    row.get("Status", ""),
+                    row.get("Priority", ""),
+                    row.get("Experience", ""),
+                    row.get("License Type", ""),
+                )
+                self.drivers_tree.insert("", "end", values=values)
+
+            # Legacy statistics
+            total = len(df)
+            active = len(df[df.get("Status", "") == "active"]) if "Status" in df else 0
+            avg_exp = df["Experience"].mean() if "Experience" in df else 0
+            self.drivers_stats_label.configure(
+                text=f"Total: {total} | Active: {active} | Inactive: {total - active} | "
+                f"Average Experience: {avg_exp:.1f} years"
+            )
+
+        # Persist for validation/export
+        self.current_data["drivers"] = df.copy()
 
     def add_item(self, data_type: str):
         """Add new item."""
@@ -782,6 +1072,45 @@ class DataManagementTab:
             else:
                 existing.add("hidden")
             tree.item(item, tags=tuple(existing))
+
+    def filter_by_qualification(self, qual_filter: str):
+        """Filter drivers by qualification type.
+
+        Args:
+            qual_filter: Qualification filter value (All, Step Van, EDV, CDV, DOT, Helper Only)
+        """
+        if qual_filter == "All":
+            # Clear all hidden tags
+            for item in self.drivers_tree.get_children():
+                tags = set(self.drivers_tree.item(item, "tags"))
+                tags.discard("hidden")
+                self.drivers_tree.item(item, tags=tuple(tags))
+            return
+
+        # Map filter to search terms
+        filter_map = {
+            "Step Van": "step van",
+            "EDV": "edv",
+            "CDV": "cdv",
+            "DOT": "dot",
+            "Helper Only": "helper",
+        }
+        search_term = filter_map.get(qual_filter, "").lower()
+
+        for item in self.drivers_tree.get_children():
+            values = self.drivers_tree.item(item, "values")
+            if len(values) < 5:
+                continue
+
+            qualifications = str(values[4]).lower()  # Qualifications column
+            tags = set(self.drivers_tree.item(item, "tags"))
+
+            if search_term in qualifications:
+                tags.discard("hidden")
+            else:
+                tags.add("hidden")
+
+            self.drivers_tree.item(item, tags=tuple(tags))
 
     def import_data(self, data_type: str):
         """Import data from CSV."""
@@ -887,22 +1216,44 @@ class DataManagementTab:
         return pd.DataFrame(rows)
 
     def _build_drivers_export_df(self) -> pd.DataFrame:
+        """Build export DataFrame from current drivers tree.
+
+        Supports both associate data format (10 columns) and legacy format (8 columns).
+        """
         rows = []
         for item in self.drivers_tree.get_children(""):
             vals = self.drivers_tree.item(item, "values")
-            if len(vals) < 8:
-                continue
-            rows.append(
-                {
-                    "Employee ID": vals[1],
-                    "Name": vals[2],
-                    "Location": vals[3],
-                    "Status": vals[4],
-                    "Priority": vals[5],
-                    "Experience": vals[6],
-                    "License Type": vals[7],
-                }
-            )
+
+            # Detect format by column count
+            if len(vals) >= 10:
+                # Associate data format
+                rows.append(
+                    {
+                        "Name and ID": vals[2],
+                        "TransporterID": vals[1],
+                        "Position": vals[3],
+                        "Qualifications": vals[4],
+                        "ID expiration": vals[5],
+                        "Personal Phone Number": vals[6],
+                        "Work Phone Number": vals[7],
+                        "Email": vals[8],
+                        "Status": vals[9],
+                    }
+                )
+            elif len(vals) >= 8:
+                # Legacy format
+                rows.append(
+                    {
+                        "Employee ID": vals[1],
+                        "Name": vals[2],
+                        "Location": vals[3],
+                        "Status": vals[4],
+                        "Priority": vals[5],
+                        "Experience": vals[6],
+                        "License Type": vals[7],
+                    }
+                )
+
         return pd.DataFrame(rows)
 
     def refresh_data(self):
@@ -921,83 +1272,331 @@ class DataManagementTab:
             summary = self._validate_vehicles(df)
             messagebox.showinfo("Validation", summary)
         else:
-            messagebox.showinfo("Validation", "Driver validation not implemented yet.")
+            # Driver validation
+            df = self.current_data.get("drivers")
+            if df is None or df.empty:
+                messagebox.showinfo("Validation", "No driver data to validate.")
+                return
+            summary = self._validate_drivers(df)
+            messagebox.showinfo("Validation", summary)
 
     def _validate_vehicles(self, df: pd.DataFrame) -> str:
-        """Perform basic, non-intrusive validation on Vehicles."""
+        """Perform basic, non-intrusive validation on Vehicles.
+
+        Handles multiple formats:
+        - VehiclesData.xlsx (fleet inventory)
+        - Daily Summary Vehicle Status
+        - Legacy Vehicle Log
+        """
+        from datetime import timedelta
+
         issues = []
+        warnings = []
         cols = {c.lower().strip(): c for c in df.columns}
-        # Detect source
-        van_col = cols.get("van id") or cols.get("vehicle id") or "Vehicle Number"
-        op_col = cols.get("opnal? y/n") or cols.get("operational")
-        type_col = cols.get("type") or cols.get("vehicle type") or "Type"
 
-        # Required columns
-        for req in [van_col, type_col]:
-            if req not in df.columns:
-                issues.append(f"Missing required column: {req}")
+        # Detect source format
+        is_vehicles_data = "vin" in cols and "vehiclename" in cols
 
-        # Uniqueness
-        try:
-            van_series = df[van_col].astype(str).str.strip()
-            dupes = van_series[van_series.duplicated()].unique().tolist()
-            if dupes:
-                issues.append(
-                    f"Duplicate vehicle IDs: {', '.join(map(str, dupes[:10]))}{'...' if len(dupes)>10 else ''}"
-                )
-        except Exception:
-            issues.append("Could not evaluate duplicate vehicle IDs")
+        if is_vehicles_data:
+            # VehiclesData.xlsx format validation
+            van_col = cols.get("vehiclename")
+            vin_col = cols.get("vin")
+            op_col = cols.get("operationalstatus")
+            reg_col = cols.get("registrationexpirydate")
+            ownership_end_col = cols.get("ownershipenddate")
 
-        # Operational/Status field presence
-        if op_col and op_col in df.columns:
-            invalid_op = df[op_col].dropna().astype(str).str.upper().isin(["Y", "N"]).all()
-            if not invalid_op:
-                issues.append("Operational column contains values other than Y/N")
+            # Required columns for fleet inventory
+            required = ["vehicleName", "vin", "operationalStatus", "serviceType"]
+            for req in required:
+                req_lower = req.lower()
+                if req_lower not in cols:
+                    issues.append(f"Missing required column: {req}")
+
+            # VIN uniqueness
+            if vin_col and vin_col in df.columns:
+                try:
+                    vin_series = df[vin_col].astype(str).str.strip()
+                    vin_series = vin_series[vin_series != ""]
+                    dupes = vin_series[vin_series.duplicated()].unique().tolist()
+                    if dupes:
+                        issues.append(
+                            f"Duplicate VINs: {', '.join(map(str, dupes[:5]))}{'...' if len(dupes)>5 else ''}"
+                        )
+                except Exception:
+                    issues.append("Could not evaluate VIN uniqueness")
+
+            # Vehicle name uniqueness
+            if van_col and van_col in df.columns:
+                try:
+                    name_series = df[van_col].astype(str).str.strip()
+                    dupes = name_series[name_series.duplicated()].unique().tolist()
+                    if dupes:
+                        issues.append(
+                            f"Duplicate vehicle names: {', '.join(map(str, dupes[:5]))}{'...' if len(dupes)>5 else ''}"
+                        )
+                except Exception:
+                    issues.append("Could not evaluate vehicle name uniqueness")
+
+            # Operational status validation
+            if op_col and op_col in df.columns:
+                try:
+                    statuses = df[op_col].dropna().astype(str).str.upper().unique()
+                    valid_statuses = {"OPERATIONAL", "GROUNDED", "MAINTENANCE", "INACTIVE"}
+                    invalid = set(statuses) - valid_statuses
+                    if invalid:
+                        warnings.append(
+                            f"Unexpected operational statuses: {', '.join(sorted(invalid))}"
+                        )
+
+                    # Count grounded vehicles
+                    grounded_count = (df[op_col].astype(str).str.upper() != "OPERATIONAL").sum()
+                    if grounded_count > 0:
+                        warnings.append(f"{grounded_count} vehicles are not operational")
+                except Exception:
+                    issues.append("Could not validate operational status")
+
+            # Registration expiry warnings
+            if reg_col and reg_col in df.columns:
+                try:
+                    today = pd.Timestamp.now()
+                    warning_threshold = today + timedelta(days=30)
+
+                    # Parse dates
+                    reg_dates = pd.to_datetime(df[reg_col], errors="coerce")
+
+                    # Expired registrations
+                    expired = df[reg_dates < today]
+                    if len(expired) > 0:
+                        expired_names = expired[van_col].astype(str).tolist()[:5]
+                        warnings.append(
+                            f"⚠️ {len(expired)} vehicles with EXPIRED registrations: {', '.join(expired_names)}{'...' if len(expired)>5 else ''}"
+                        )
+
+                    # Expiring soon
+                    expiring_soon = df[(reg_dates >= today) & (reg_dates <= warning_threshold)]
+                    if len(expiring_soon) > 0:
+                        expiring_names = expiring_soon[van_col].astype(str).tolist()[:5]
+                        warnings.append(
+                            f"⏰ {len(expiring_soon)} vehicles expiring within 30 days: {', '.join(expiring_names)}{'...' if len(expiring_soon)>5 else ''}"
+                        )
+                except Exception as e:
+                    warnings.append(f"Could not check registration expiry dates: {e}")
+
+            # Ownership/lease end date warnings
+            if ownership_end_col and ownership_end_col in df.columns:
+                try:
+                    today = pd.Timestamp.now()
+                    warning_threshold = today + timedelta(days=90)
+
+                    # Parse dates
+                    end_dates = pd.to_datetime(df[ownership_end_col], errors="coerce")
+
+                    # Ending soon
+                    ending_soon = df[(end_dates >= today) & (end_dates <= warning_threshold)]
+                    if len(ending_soon) > 0:
+                        ending_names = ending_soon[van_col].astype(str).tolist()[:5]
+                        warnings.append(
+                            f"📅 {len(ending_soon)} vehicles with ownership/lease ending within 90 days: {', '.join(ending_names)}{'...' if len(ending_soon)>5 else ''}"
+                        )
+                except Exception:
+                    pass  # Ownership end date is optional
+
         else:
-            issues.append("Operational status column not found (Opnal? Y/N)")
+            # Daily Summary / Legacy format validation
+            van_col = cols.get("van id") or cols.get("vehicle id") or "Vehicle Number"
+            op_col = cols.get("opnal? y/n") or cols.get("operational")
+            type_col = cols.get("type") or cols.get("vehicle type") or "Type"
 
-        # Type normalization hints
-        known_types = {"extra large", "large", "step van"}
-        if type_col in df.columns:
-            unknown_types = sorted(
-                {str(x).strip().lower() for x in df[type_col].dropna().unique()} - known_types
-            )
-            if unknown_types:
-                issues.append(
-                    f"Unrecognized vehicle types: {', '.join(unknown_types[:10])}{'...' if len(unknown_types)>10 else ''}"
-                )
+            # Required columns
+            for req in [van_col, type_col]:
+                if req not in df.columns:
+                    issues.append(f"Missing required column: {req}")
 
-        # Cross-check with Vehicle Log enrichment if available
-        details = getattr(self, "_vehicle_details", {})
-        if details:
+            # Uniqueness
             try:
                 van_series = df[van_col].astype(str).str.strip()
-                total = int(van_series.nunique())
-                with_details = sum(
-                    1 for vid in van_series if str(vid) in details and details[str(vid)].get("VIN")
-                )
-                without_vin = [
-                    str(vid)
-                    for vid in van_series
-                    if str(vid) in details and not details[str(vid)].get("VIN")
-                ]
-                if total:
-                    coverage = with_details / total * 100.0
-                    if coverage < 80:
-                        issues.append(
-                            f"VIN coverage low: {coverage:.1f}% of vehicles have VIN in Vehicle Log"
-                        )
-                if without_vin:
+                dupes = van_series[van_series.duplicated()].unique().tolist()
+                if dupes:
                     issues.append(
-                        f"Vehicles missing VIN: {', '.join(without_vin[:10])}{'...' if len(without_vin)>10 else ''}"
+                        f"Duplicate vehicle IDs: {', '.join(map(str, dupes[:10]))}{'...' if len(dupes)>10 else ''}"
                     )
             except Exception:
-                issues.append("Could not compute Vehicle Log enrichment metrics")
+                issues.append("Could not evaluate duplicate vehicle IDs")
+
+            # Operational/Status field presence
+            if op_col and op_col in df.columns:
+                invalid_op = df[op_col].dropna().astype(str).str.upper().isin(["Y", "N"]).all()
+                if not invalid_op:
+                    issues.append("Operational column contains values other than Y/N")
+            else:
+                issues.append("Operational status column not found (Opnal? Y/N)")
+
+            # Type normalization hints
+            known_types = {"extra large", "large", "step van"}
+            if type_col in df.columns:
+                unknown_types = sorted(
+                    {str(x).strip().lower() for x in df[type_col].dropna().unique()} - known_types
+                )
+                if unknown_types:
+                    issues.append(
+                        f"Unrecognized vehicle types: {', '.join(unknown_types[:10])}{'...' if len(unknown_types)>10 else ''}"
+                    )
+
+            # Cross-check with Vehicle Log enrichment if available
+            details = getattr(self, "_vehicle_details", {})
+            if details:
+                try:
+                    van_series = df[van_col].astype(str).str.strip()
+                    total = int(van_series.nunique())
+                    with_details = sum(
+                        1
+                        for vid in van_series
+                        if str(vid) in details and details[str(vid)].get("VIN")
+                    )
+                    without_vin = [
+                        str(vid)
+                        for vid in van_series
+                        if str(vid) in details and not details[str(vid)].get("VIN")
+                    ]
+                    if total:
+                        coverage = with_details / total * 100.0
+                        if coverage < 80:
+                            issues.append(
+                                f"VIN coverage low: {coverage:.1f}% of vehicles have VIN in Vehicle Log"
+                            )
+                    if without_vin:
+                        issues.append(
+                            f"Vehicles missing VIN: {', '.join(without_vin[:10])}{'...' if len(without_vin)>10 else ''}"
+                        )
+                except Exception:
+                    issues.append("Could not compute Vehicle Log enrichment metrics")
+
+        # Build result message
+        if not issues and not warnings:
+            total_rows = len(df)
+            format_name = "fleet inventory" if is_vehicles_data else "vehicle status"
+            return f"Data validation complete. {total_rows} vehicles checked ({format_name}). No issues found."
+
+        result_parts = []
+        if issues:
+            result_parts.append("⚠️ Issues:\n- " + "\n- ".join(issues))
+        if warnings:
+            result_parts.append("ℹ️ Warnings:\n- " + "\n- ".join(warnings))
+
+        return "\n\n".join(result_parts)
+
+    def _validate_drivers(self, df: pd.DataFrame) -> str:
+        """Validate driver/associate data.
+
+        Performs comprehensive validation on driver data including:
+        - Required column presence
+        - Duplicate detection
+        - Expiration date warnings
+        - Status consistency
+        - Contact information completeness
+
+        Args:
+            df: DataFrame containing driver/associate data
+
+        Returns:
+            Validation summary string with issues or success message
+        """
+        issues = []
+        cols_map = {c.lower().strip(): c for c in df.columns}
+
+        # Detect format
+        is_associate = "transporterid" in cols_map
+
+        if is_associate:
+            # Required columns for associate data
+            required = ["Name and ID", "TransporterID", "Status", "Qualifications"]
+            for req in required:
+                if req not in df.columns:
+                    issues.append(f"Missing required column: {req}")
+
+            # Check for duplicate TransporterIDs
+            if "TransporterID" in df.columns:
+                dupes = df["TransporterID"].duplicated()
+                dupe_count = dupes.sum()
+                if dupe_count > 0:
+                    dupe_ids = df.loc[dupes, "TransporterID"].unique().tolist()
+                    issues.append(
+                        f"Found {dupe_count} duplicate TransporterID values: {', '.join(map(str, dupe_ids[:5]))}"
+                        f"{'...' if len(dupe_ids) > 5 else ''}"
+                    )
+
+            # Check expiration dates
+            if "ID expiration" in df.columns:
+                today = pd.Timestamp.now()
+                exp_dates = pd.to_datetime(df["ID expiration"], errors="coerce")
+                expired = (exp_dates < today).sum()
+                expiring_30 = (
+                    (exp_dates >= today) & (exp_dates <= today + pd.Timedelta(days=30))
+                ).sum()
+
+                if expired > 0:
+                    # Get expired associate names
+                    expired_assocs = df.loc[exp_dates < today, "Name and ID"].head(5).tolist()
+                    issues.append(
+                        f"⚠️ {expired} associates have EXPIRED certifications: {', '.join(expired_assocs)}"
+                        f"{'...' if expired > 5 else ''}"
+                    )
+
+                if expiring_30 > 0:
+                    # Get expiring soon associate names
+                    expiring_assocs = (
+                        df.loc[
+                            (exp_dates >= today) & (exp_dates <= today + pd.Timedelta(days=30)),
+                            "Name and ID",
+                        ]
+                        .head(5)
+                        .tolist()
+                    )
+                    issues.append(
+                        f"⚠️ {expiring_30} associates have certifications expiring within 30 days: {', '.join(expiring_assocs)}"
+                        f"{'...' if expiring_30 > 5 else ''}"
+                    )
+
+            # Check status consistency
+            if "Status" in df.columns:
+                valid_statuses = ["ACTIVE", "INACTIVE"]
+                invalid_status = ~df["Status"].str.upper().isin(valid_statuses)
+                invalid_count = invalid_status.sum()
+                if invalid_count > 0:
+                    invalid_vals = df.loc[invalid_status, "Status"].unique().tolist()
+                    issues.append(
+                        f"Found {invalid_count} records with invalid status: {', '.join(map(str, invalid_vals))}"
+                    )
+
+            # Contact information completeness
+            contact_fields = {
+                "Email": "email addresses",
+                "Personal Phone Number": "personal phone numbers",
+                "Work Phone Number": "work phone numbers",
+            }
+            for col, desc in contact_fields.items():
+                if col in df.columns:
+                    missing = df[col].isna() | (df[col].astype(str).str.strip() == "")
+                    missing_count = missing.sum()
+                    if missing_count > 0:
+                        issues.append(f"{missing_count} associates missing {desc}")
+
+            # Qualification completeness
+            if "Qualifications" in df.columns:
+                missing_qual = df["Qualifications"].isna() | (
+                    df["Qualifications"].astype(str).str.strip() == ""
+                )
+                missing_qual_count = missing_qual.sum()
+                if missing_qual_count > 0:
+                    issues.append(f"{missing_qual_count} associates missing qualifications")
+
+        else:
+            # Legacy format validation (minimal)
+            issues.append("Legacy driver format detected - limited validation available")
 
         if not issues:
-            # Provide a concise positive summary
-            total_rows = len(df)
-            return f"Data validation complete. {total_rows} vehicles checked. No issues found."
+            return f"Driver validation complete. {len(df)} associates checked. No issues found."
+
         return "Validation summary:\n- " + "\n- ".join(issues)
 
     def show_vehicle_details(self):

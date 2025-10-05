@@ -452,6 +452,9 @@ class ResourceAllocationGUI(ctk.CTk):
         except Exception as e:
             logger.debug(f"Unable to wire Daily Summary getter to data tab: {e}")
 
+        # Auto-load data on startup
+        self.after(500, self._auto_load_data_on_startup)
+
         # Set default tab
         self.tabview.set("🏠 Dashboard")
 
@@ -544,6 +547,161 @@ class ResourceAllocationGUI(ctk.CTk):
                 logger.debug(f"Failed to propagate auto_open_results to allocation tab: {e}")
         except Exception as e:
             logger.debug(f"_on_settings_saved handler error: {e}")
+
+    def _auto_load_data_on_startup(self):
+        """Automatically load vehicle and associate data on application startup.
+
+        This method is called after a short delay on startup to:
+        1. Load vehicle data from Daily Summary (if available)
+        2. Load associate data from AssociateData.csv (if available)
+
+        The loading happens in the background with user feedback via status bar.
+        """
+        try:
+            logger.info("Starting automatic data loading on startup")
+            self.set_status("Loading data...", "info")
+
+            # Track what was loaded
+            loaded_items = []
+
+            # 1. Auto-load Fleet Inventory (VehiclesData.xlsx) - PRIORITY
+            vehicles_loaded = False
+            try:
+                fleet_path = Path("bway_files") / "VehiclesData.xlsx"
+                if not fleet_path.exists():
+                    fleet_path = Path("inputs") / "VehiclesData.xlsx"
+
+                if fleet_path.exists():
+                    logger.info(f"Auto-loading fleet inventory from: {fleet_path}")
+                    self.data_management_tab.source_var.set("Fleet Inventory (VehiclesData.xlsx)")
+
+                    def load_fleet():
+                        try:
+                            fleet_df = self.data_management_service.load_vehicles_data(
+                                str(fleet_path)
+                            )
+                            if fleet_df is not None and not fleet_df.empty:
+                                self.data_management_tab.populate_vehicles_tree(fleet_df)
+                                loaded_items.append(f"{len(fleet_df)} vehicles (fleet inventory)")
+                                logger.info(
+                                    f"Auto-loaded {len(fleet_df)} vehicles from fleet inventory"
+                                )
+                        except Exception as e:
+                            logger.warning(f"Failed to auto-load fleet inventory: {e}")
+
+                    self.after(100, load_fleet)
+                    vehicles_loaded = True
+                else:
+                    logger.debug("VehiclesData.xlsx not found, will try Daily Summary")
+            except Exception as e:
+                logger.warning(f"Failed to auto-load fleet inventory: {e}")
+
+            # Fallback: Auto-load Vehicle Status from Daily Summary if fleet inventory not found
+            if not vehicles_loaded:
+                try:
+                    ds_path = self.data_management_service.resolve_daily_summary_path(None)
+                    if ds_path:
+                        logger.info(
+                            f"Auto-loading vehicles from Daily Summary (fallback): {ds_path}"
+                        )
+                        self.data_management_tab.source_var.set("Daily Summary (Vehicle Status)")
+
+                        def load_vehicles():
+                            try:
+                                vs_df = self.data_management_service.load_vehicle_status(ds_path)
+                                if vs_df is not None and not vs_df.empty:
+                                    self.data_management_tab.populate_vehicles_tree(vs_df)
+
+                                    # Load optional Vehicle Log for enrichment
+                                    self.data_management_tab._vehicle_details = {}
+                                    try:
+                                        vl_df = self.data_management_service.load_vehicle_log(
+                                            ds_path
+                                        )
+                                        if vl_df is not None and not vl_df.empty:
+                                            colmap = {c.lower().strip(): c for c in vl_df.columns}
+                                            van_col = colmap.get("van id")
+                                            vin_col = colmap.get("vin")
+                                            geo_col = colmap.get("geotab") or colmap.get(
+                                                "geotab code"
+                                            )
+                                            brand_col = colmap.get("branded or rental")
+                                            for _, r in vl_df.iterrows():
+                                                vid = (
+                                                    str(r.get(van_col, "") or "").strip()
+                                                    if van_col
+                                                    else ""
+                                                )
+                                                if not vid:
+                                                    continue
+                                                self.data_management_tab._vehicle_details[vid] = {
+                                                    "VIN": str(r.get(vin_col, "") or "").strip()
+                                                    if vin_col
+                                                    else "",
+                                                    "GeoTab": str(r.get(geo_col, "") or "").strip()
+                                                    if geo_col
+                                                    else "",
+                                                    "Branded/Rental": str(
+                                                        r.get(brand_col, "") or ""
+                                                    ).strip()
+                                                    if brand_col
+                                                    else "",
+                                                }
+                                    except Exception as e:
+                                        logger.debug(f"Vehicle Log enrichment skipped: {e}")
+
+                                    loaded_items.append(f"{len(vs_df)} vehicles")
+                                    logger.info(f"Auto-loaded {len(vs_df)} vehicles")
+                            except Exception as e:
+                                logger.warning(f"Failed to auto-load vehicles: {e}")
+
+                        self.after(100, load_vehicles)
+                    else:
+                        logger.debug("Daily Summary path not available for auto-load")
+                except Exception as e:
+                    logger.warning(f"Failed to auto-load vehicle data: {e}")
+
+            # 2. Auto-load Associate Data
+            try:
+                # Try bway_files first, then inputs
+                assoc_path = Path("bway_files") / "AssociateData.csv"
+                if not assoc_path.exists():
+                    assoc_path = Path("inputs") / "AssociateData.csv"
+
+                if assoc_path.exists():
+                    logger.info(f"Auto-loading associates from: {assoc_path}")
+
+                    def load_associates():
+                        try:
+                            df = self.data_management_service.load_associate_data(str(assoc_path))
+                            if df is not None and not df.empty:
+                                self.data_management_tab.populate_drivers_tree(df)
+                                loaded_items.append(f"{len(df)} associates")
+                                logger.info(f"Auto-loaded {len(df)} associates")
+                        except Exception as e:
+                            logger.warning(f"Failed to auto-load associates: {e}")
+
+                    self.after(200, load_associates)
+                else:
+                    logger.debug("AssociateData.csv not found for auto-load")
+            except Exception as e:
+                logger.warning(f"Failed to auto-load associate data: {e}")
+
+            # Update status after loading completes
+            def update_final_status():
+                if loaded_items:
+                    status_msg = f"Auto-loaded: {', '.join(loaded_items)}"
+                    self.set_status(status_msg, "success")
+                    logger.info(f"Auto-load complete: {status_msg}")
+                else:
+                    self.set_status("Ready - No data auto-loaded", "info")
+                    logger.info("Auto-load complete - no data sources found")
+
+            self.after(1000, update_final_status)
+
+        except Exception as e:
+            logger.error(f"Error during auto-load: {e}")
+            self.set_status("Auto-load failed", "warning")
 
     def update_status(self):
         """Update status bar information."""

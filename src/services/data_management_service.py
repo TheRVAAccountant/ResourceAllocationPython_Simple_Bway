@@ -101,3 +101,114 @@ class DataManagementService:
         except Exception as e:
             logger.debug(f"Vehicle Log not available or failed to read from {path}: {e}")
             return None
+
+    def load_associate_data(self, csv_path: str | None = None) -> pd.DataFrame | None:
+        """Load associate data from CSV with caching.
+
+        Loads driver/helper associate data from AssociateData.csv format with
+        proper date parsing and column normalization.
+
+        Args:
+            csv_path: Path to AssociateData.csv (defaults to inputs/AssociateData.csv)
+
+        Returns:
+            DataFrame with normalized columns or None on failure
+
+        Note:
+            - Handles UTF-8 BOM encoding
+            - Parses ID expiration dates in MM/DD/YYYY format
+            - Caches results for performance
+        """
+        # Resolve path
+        path = Path(csv_path) if csv_path else Path("inputs") / "AssociateData.csv"
+
+        if not path.exists():
+            logger.debug(f"Associate data not found at {path}")
+            return None
+
+        # Check cache
+        key = f"associates::{path}"
+        now = time()
+        entry = self._cache.get(key)
+        if entry and (now - entry.ts) < self.cache_ttl:
+            return entry.df
+
+        try:
+            # Read with proper encoding and date parsing
+            df = pd.read_csv(
+                path,
+                encoding="utf-8-sig",  # Handle BOM if present
+            )
+
+            # Normalize column names (strip whitespace)
+            df.columns = df.columns.str.strip()
+
+            # Parse ID expiration date
+            if "ID expiration" in df.columns:
+                df["ID expiration"] = pd.to_datetime(
+                    df["ID expiration"], format="%m/%d/%Y", errors="coerce"
+                )
+
+            # Cache and return
+            self._cache[key] = _CacheEntry(df=df, ts=now)
+            logger.info(f"Loaded {len(df)} associates from {path}")
+            return df
+
+        except Exception as e:
+            logger.error(f"Failed to load associate data from {path}: {e}")
+            return None
+
+    def load_vehicles_data(self, xlsx_path: str | None = None) -> pd.DataFrame | None:
+        """Load comprehensive vehicle data from VehiclesData.xlsx.
+
+        Loads fleet inventory with comprehensive vehicle details including VIN,
+        make, model, ownership information, and registration data.
+
+        Args:
+            xlsx_path: Path to VehiclesData.xlsx (defaults to bway_files/VehiclesData.xlsx)
+
+        Returns:
+            DataFrame with normalized columns or None on failure
+
+        Note:
+            - Contains 28 columns with full vehicle specifications
+            - Parses ownership and registration dates
+            - Caches results for performance
+        """
+        # Resolve path
+        if xlsx_path:
+            path = Path(xlsx_path)
+        else:
+            path = Path("bway_files") / "VehiclesData.xlsx"
+            if not path.exists():
+                path = Path("inputs") / "VehiclesData.xlsx"
+
+        if not path.exists():
+            logger.debug(f"Vehicles data not found at {path}")
+            return None
+
+        # Check cache
+        key = f"vehicles_data::{path}"
+        now = time()
+        entry = self._cache.get(key)
+        if entry and (now - entry.ts) < self.cache_ttl:
+            return entry.df
+
+        try:
+            # Read comprehensive vehicle data
+            df = pd.read_excel(path, sheet_name="Sheet1")
+
+            # Parse date columns
+            date_cols = ["ownershipStartDate", "ownershipEndDate", "registrationExpiryDate"]
+            for col in date_cols:
+                if col in df.columns:
+                    df[col] = pd.to_datetime(df[col], errors="coerce")
+
+            # Cache and return
+            self._cache[key] = _CacheEntry(df=df, ts=now)
+            logger.info(f"Loaded {len(df)} vehicles from {path}")
+            return df
+
+        except Exception as e:
+            logger.error(f"Failed to load vehicles data from {path}: {e}")
+            return None
