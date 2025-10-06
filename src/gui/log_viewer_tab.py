@@ -307,19 +307,6 @@ class LogViewerTab:
         )
         self.last_update_label.configure(text=f"Last update: {datetime.now().strftime('%H:%M:%S')}")
 
-        self.level_filters["DEBUG"].configure(
-            command=lambda level_name="DEBUG": self.filter_logs(level_name)
-        )
-        self.level_filters["INFO"].configure(
-            command=lambda level_name="INFO": self.filter_logs(level_name)
-        )
-        self.level_filters["WARNING"].configure(
-            command=lambda level_name="WARNING": self.filter_logs(level_name)
-        )
-        self.level_filters["ERROR"].configure(
-            command=lambda level_name="ERROR": self.filter_logs(level_name)
-        )
-
     def filter_logs(self, level: str):
         """Filter logs by level.
 

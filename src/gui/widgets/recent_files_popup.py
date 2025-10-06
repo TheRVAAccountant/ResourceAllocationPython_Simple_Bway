@@ -37,7 +37,7 @@ class RecentFilesPopup(ctk.CTkToplevel):
 
         # Configure window
         self.title("")  # No title bar text
-        self.geometry("450x300")
+        self.geometry("450x350")
         self.resizable(False, False)
 
         # Remove window decorations for dropdown style
@@ -87,7 +87,11 @@ class RecentFilesPopup(ctk.CTkToplevel):
     def _create_ui(self):
         """Create the popup UI."""
         # Main container with border
-        main_frame = ctk.CTkFrame(self, corner_radius=10)
+        main_frame = ctk.CTkFrame(
+            self,
+            corner_radius=10,
+            fg_color=("gray97", "gray15"),
+        )
         main_frame.pack(fill="both", expand=True, padx=2, pady=2)
 
         # Header
@@ -123,31 +127,59 @@ class RecentFilesPopup(ctk.CTkToplevel):
         separator = ctk.CTkFrame(main_frame, height=2, fg_color=("gray80", "gray20"))
         separator.pack(fill="x", padx=10, pady=5)
 
-        # Scrollable frame for file list
+        # Scrollable frame for file list - restrict expansion to keep buttons visible
         self.files_frame = ctk.CTkScrollableFrame(
-            main_frame, corner_radius=0, fg_color="transparent"
+            main_frame, corner_radius=0, fg_color="transparent", height=180
         )
-        self.files_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        self.files_frame.pack(fill="both", expand=False, padx=10, pady=5)
 
-        # Bottom buttons frame
-        bottom_frame = ctk.CTkFrame(main_frame, height=40, fg_color="transparent")
-        bottom_frame.pack(fill="x", padx=10, pady=(5, 10))
+        # Bottom buttons frame - increased height for better visibility
+        bottom_frame = ctk.CTkFrame(
+            main_frame,
+            height=60,
+            corner_radius=8,
+            fg_color=("gray90", "gray18"),
+        )
+        bottom_frame.pack(fill="x", padx=10, pady=(8, 10))
+        bottom_frame.pack_propagate(False)
 
         # Clear button
-        self.clear_button = ctk.CTkButton(
+        self.clear_button = self._create_button(
             bottom_frame,
             text="🗑️ Clear All",
-            width=100,
-            height=30,
             command=self._clear_recent_files,
         )
-        self.clear_button.pack(side="left", padx=(0, 5))
+        self.clear_button.pack(side="left", padx=(8, 8), pady=8)
 
         # Refresh button
-        refresh_button = ctk.CTkButton(
-            bottom_frame, text="🔄 Refresh", width=100, height=30, command=self._load_recent_files
+        refresh_button = self._create_button(
+            bottom_frame,
+            text="🔄 Refresh",
+            command=self._load_recent_files,
         )
-        refresh_button.pack(side="left")
+        refresh_button.pack(side="left", padx=(0, 8), pady=8)
+
+    def _create_button(
+        self,
+        parent,
+        text: str,
+        command: Callable[[], None],
+    ) -> ctk.CTkButton:
+        """Create a popup button with improved visibility for both themes."""
+        return ctk.CTkButton(
+            parent,
+            text=text,
+            width=140,
+            height=40,
+            command=command,
+            corner_radius=6,
+            fg_color=("#d4d4d4", "#2d3a4a"),
+            hover_color=("#c4c4c4", "#364457"),
+            text_color=("#1a1a1a", "white"),
+            border_width=1,
+            border_color=("#b0b0b0", "#1f2a35"),
+            font=ctk.CTkFont(size=13, weight="normal"),
+        )
 
     def _get_field_display_name(self) -> str:
         """Get display name for the field type."""
